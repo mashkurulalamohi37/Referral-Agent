@@ -1,0 +1,7 @@
+{
+  "event_id": "evt_bad_2",
+  "event_type": "payment.refunded",
+  "schema_version": 1,
+  "occurred_at": "2026-10-10T10:00:00Z",
+  "data": { "refund_id": "R1", "payment_id": "P1", "amount_refunded": 2000.5, "currency": "BDT", "refunded_at": "2026-10-10T10:00:00Z" }
+}

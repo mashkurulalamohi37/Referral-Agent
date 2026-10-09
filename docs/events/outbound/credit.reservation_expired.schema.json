@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.referral-platform.example/events/v1/outbound/credit.reservation_expired.schema.json",
+  "title": "credit.reservation_expired (outbound)",
+  "description": "",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "reservation_id",
+    "external_user_id",
+    "order_ref",
+    "released_amount",
+    "currency",
+    "expired_at"
+  ],
+  "properties": {
+    "reservation_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "external_user_id": {
+      "$ref": "../common.schema.json#/$defs/external_id"
+    },
+    "order_ref": {
+      "type": "string",
+      "maxLength": 128
+    },
+    "released_amount": {
+      "$ref": "../common.schema.json#/$defs/minor_amount"
+    },
+    "currency": {
+      "$ref": "../common.schema.json#/$defs/currency"
+    },
+    "expired_at": {
+      "$ref": "../common.schema.json#/$defs/timestamp"
+    }
+  }
+}

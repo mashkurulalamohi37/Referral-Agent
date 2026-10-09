@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.referral-platform.example/events/v1/payment.failed.schema.json",
+  "title": "payment.failed data",
+  "description": "No effect unless the payment was recorded as succeeded, then treated as a full refund (ADR 0010).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "payment_id",
+    "subscription_id",
+    "reason_code"
+  ],
+  "properties": {
+    "payment_id": {
+      "$ref": "common.schema.json#/$defs/external_id"
+    },
+    "subscription_id": {
+      "oneOf": [
+        {
+          "$ref": "common.schema.json#/$defs/external_id"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "external_user_id": {
+      "$ref": "common.schema.json#/$defs/external_id"
+    },
+    "reason_code": {
+      "type": "string",
+      "maxLength": 64,
+      "pattern": "^[a-z0-9_]+$"
+    }
+  }
+}

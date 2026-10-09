@@ -1,0 +1,119 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  UV_VERSION: "0.5.11"
+
+jobs:
+  backend:
+    name: Backend lint, types, tests
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:16.6-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-superuser
+          REFERRAL_OWNER_PASSWORD: ci-owner
+          REFERRAL_APP_PASSWORD: ci-app
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+      redis:
+        image: redis:7.4-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+    env:
+      TEST_DATABASE_URL: postgresql+asyncpg://referral_app:ci-app@localhost:5432/referral_test
+      TEST_MIGRATION_DATABASE_URL: postgresql+asyncpg://referral_owner:ci-owner@localhost:5432/referral_test
+      TEST_REDIS_URL: redis://localhost:6379/15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+      - name: Install Python 3.12 and dependencies
+        run: uv sync --frozen --python 3.12
+      - name: Create roles and test database (same script as Compose)
+        working-directory: .
+        env:
+          PGPASSWORD: ci-superuser
+          POSTGRES_USER: postgres
+          REFERRAL_OWNER_PASSWORD: ci-owner
+          REFERRAL_APP_PASSWORD: ci-app
+        run: |
+          sudo apt-get install -y --no-install-recommends postgresql-client >/dev/null
+          export PGHOST=localhost
+          sh deploy/postgres/init/01-roles.sh
+      - name: Ruff lint
+        run: uv run ruff check .
+      - name: Ruff format
+        run: uv run ruff format --check .
+      - name: Mypy (strict)
+        run: uv run mypy
+      - name: Tests (unit + integration) with coverage
+        run: >-
+          uv run pytest
+          --cov=app --cov-report=term --cov-report=xml
+          --cov-fail-under=80
+      - name: Money-path coverage >= 95% (§22.4)
+        run: uv run coverage report --include="app/core/money.py,app/commissions/*,app/ledger/*,app/credits/*,app/payouts/*,app/events/*" --fail-under=95
+      - name: Dependency audit
+        run: uv export --frozen --no-dev --no-hashes --format requirements-txt > /tmp/requirements.txt && uv run pip-audit --strict -r /tmp/requirements.txt
+
+  contracts:
+    name: Contract documents
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install jsonschema referencing openapi-spec-validator pyyaml rfc3339-validator
+      - run: python tools/check_contracts.py
+
+  compose-smoke:
+    name: Docker Compose stack is healthy
+    runs-on: ubuntu-24.04
+    needs: [backend]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare env
+        run: cp .env.example .env
+      - name: Build and start
+        run: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build --wait --wait-timeout 240
+      - name: Ready through the gateway
+        run: |
+          curl -fsS http://127.0.0.1:8080/v1/ready | tee /dev/stderr | grep -q '"migrations":"ok"'
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/v1/metrics)" = "404"
+      - name: Beat -> worker -> DB heartbeat
+        run: |
+          for i in $(seq 1 30); do
+            docker compose -f docker-compose.yml -f docker-compose.dev.yml exec -T beat python -m app.healthcheck beat && exit 0
+            sleep 5
+          done
+          exit 1
+      - name: Logs on failure
+        if: failure()
+        run: docker compose -f docker-compose.yml -f docker-compose.dev.yml logs --no-color
+      - name: Stop
+        if: always()
+        run: docker compose -f docker-compose.yml -f docker-compose.dev.yml down -v

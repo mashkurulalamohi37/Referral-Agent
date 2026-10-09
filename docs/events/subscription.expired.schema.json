@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.referral-platform.example/events/v1/subscription.expired.schema.json",
+  "title": "subscription.expired data",
+  "description": "",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "subscription_id",
+    "effective_at"
+  ],
+  "properties": {
+    "subscription_id": {
+      "$ref": "common.schema.json#/$defs/external_id"
+    },
+    "external_user_id": {
+      "$ref": "common.schema.json#/$defs/external_id"
+    },
+    "effective_at": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    }
+  }
+}

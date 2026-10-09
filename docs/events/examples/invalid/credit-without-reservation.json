@@ -1,0 +1,11 @@
+{
+  "event_id": "evt_bad_3",
+  "event_type": "payment.succeeded",
+  "schema_version": 1,
+  "occurred_at": "2026-11-08T09:30:00Z",
+  "data": {
+    "payment_id": "P2", "subscription_id": null, "external_user_id": "U1", "plan_code": "x", "billing_reason": "one_time",
+    "currency": "BDT", "amount_gross": 1000, "discount_amount": 0, "tax_amount": 0, "credit_applied_amount": 500,
+    "amount_net_paid": 500, "paid_at": "2026-11-08T09:30:00Z"
+  }
+}

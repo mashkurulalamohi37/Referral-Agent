@@ -1,0 +1,20 @@
+{
+  "event_id": "evt_01J9ZK3Q7H6N2V4X8B0C1D2E3F",
+  "event_type": "payment.succeeded",
+  "schema_version": 1,
+  "occurred_at": "2026-10-08T15:00:00Z",
+  "data": {
+    "payment_id": "HLR-PAY-9001",
+    "subscription_id": "HLR-SUB-77",
+    "external_user_id": "HLR-456",
+    "plan_code": "premium-monthly",
+    "billing_reason": "initial",
+    "currency": "BDT",
+    "amount_gross": 200000,
+    "discount_amount": 0,
+    "tax_amount": 0,
+    "credit_applied_amount": 0,
+    "amount_net_paid": 200000,
+    "paid_at": "2026-10-08T15:00:00Z"
+  }
+}

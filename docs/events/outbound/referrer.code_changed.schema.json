@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.referral-platform.example/events/v1/outbound/referrer.code_changed.schema.json",
+  "title": "referrer.code_changed (outbound)",
+  "description": "",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "external_user_id",
+    "new_code",
+    "changed_at"
+  ],
+  "properties": {
+    "external_user_id": {
+      "$ref": "../common.schema.json#/$defs/external_id"
+    },
+    "old_code": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "new_code": {
+      "type": "string"
+    },
+    "changed_at": {
+      "$ref": "../common.schema.json#/$defs/timestamp"
+    }
+  }
+}

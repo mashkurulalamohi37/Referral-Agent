@@ -1,0 +1,7 @@
+{
+  "event_id": "evt_bad_4",
+  "event_type": "subscription.cancelled",
+  "schema_version": 1,
+  "occurred_at": "2026-10-08T20:58:00+06:00",
+  "data": { "subscription_id": "S1", "effective_at": "2026-10-08T14:58:00Z" }
+}

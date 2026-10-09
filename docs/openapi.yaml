@@ -1,0 +1,1359 @@
+openapi: 3.1.0
+info:
+  title: Referral & Commission Platform API
+  version: 1.0.0-draft.1
+  summary: Phase 0 draft of the v1 API (spec §20). Generated docs replace this file from Phase 2 on; until then this file is the contract.
+  description: |
+    Conventions (see docs/api.md):
+    - All paths are under `/v1`; the gateway may expose them as `/api/v1`.
+    - Money is integer minor units plus ISO-4217 currency. Never floats.
+    - Timestamps are RFC 3339 in UTC.
+    - List endpoints use cursor pagination: `?cursor=&limit=` (max 100), response `{items, next_cursor}`.
+    - Successful responses return the resource directly; errors use the `Error` envelope.
+    - `Idempotency-Key` is required on every non-event POST that moves money.
+    - Service endpoints act only for the product bound to the API credential. A product is never taken from the request body.
+  license:
+    name: Proprietary
+servers:
+  - url: https://api.ref.example.com/v1
+  - url: http://localhost:8000/v1
+    description: local
+tags:
+  - name: public
+  - name: auth
+  - name: service
+    description: Product backends (API client credentials). Never called from a browser.
+  - name: me
+    description: Logged-in portal user.
+  - name: admin
+  - name: ops
+
+security: []
+
+paths:
+  # ---------------------------------------------------------------- public
+  /r/{code}:
+    get:
+      tags: [public]
+      operationId: referralRedirect
+      summary: Record a click and redirect to the product's registered signup URL (§7.1)
+      description: |
+        Validates the code, records a click (hashed IP, UA, UTM, campaign), issues a signed attribution token,
+        sets a first-party cookie on the referral domain, and redirects to the product's registered `signup_url`
+        with `?ref={CODE}&rt={token}`. Redirect targets come only from the product registry.
+        Without `product`, renders a landing page listing products the code works for.
+        An invalid or inactive code renders a neutral landing page (no enumeration signal beyond `/public/codes`).
+      parameters:
+        - $ref: '#/components/parameters/ReferralCodePath'
+        - name: product
+          in: query
+          schema: { $ref: '#/components/schemas/ProductSlug' }
+        - name: campaign
+          in: query
+          schema: { type: string, maxLength: 64 }
+        - name: utm_source
+          in: query
+          schema: { type: string, maxLength: 128 }
+        - name: utm_medium
+          in: query
+          schema: { type: string, maxLength: 128 }
+        - name: utm_campaign
+          in: query
+          schema: { type: string, maxLength: 128 }
+      responses:
+        '302':
+          description: Redirect to the registered signup URL
+          headers:
+            Location: { schema: { type: string, format: uri } }
+            Set-Cookie: { schema: { type: string } }
+        '200':
+          description: Landing page (HTML) when `product` is missing or the code is not valid for it
+          content:
+            text/html: { schema: { type: string } }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /public/codes/{code}:
+    get:
+      tags: [public]
+      operationId: checkReferralCode
+      summary: Check whether a referral code is valid (rate-limited per IP, §6)
+      parameters:
+        - $ref: '#/components/parameters/ReferralCodePath'
+      responses:
+        '200':
+          description: Result. Unknown codes return `valid=false` with 200, not 404.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PublicCodeCheck' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /public/products/{slug}/theme:
+    get:
+      tags: [public]
+      operationId: getProductTheme
+      summary: Portal theme for a product (§18, ADR 0019)
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/ProductSlug' }
+      responses:
+        '200':
+          description: Theme
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProductTheme' }
+        '404': { $ref: '#/components/responses/Error' }
+
+  # ---------------------------------------------------------------- auth
+  /auth/login:
+    post:
+      tags: [auth]
+      operationId: login
+      summary: Password login for direct partners (§5.3)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, minLength: 1, maxLength: 256, writeOnly: true }
+                totp_code: { type: string, pattern: '^[0-9]{6}$', description: Required for admin roles }
+      responses:
+        '200': { $ref: '#/components/responses/Session' }
+        '401': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /auth/otp/request:
+    post:
+      tags: [auth]
+      operationId: requestOtp
+      summary: Send a one-time code by email or SMS
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [channel, destination]
+              properties:
+                channel: { type: string, enum: [EMAIL, SMS] }
+                destination: { type: string, maxLength: 254 }
+      responses:
+        '202': { description: Sent if the destination is eligible (same response either way) }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /auth/otp/verify:
+    post:
+      tags: [auth]
+      operationId: verifyOtp
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [channel, destination, code]
+              properties:
+                channel: { type: string, enum: [EMAIL, SMS] }
+                destination: { type: string, maxLength: 254 }
+                code: { type: string, pattern: '^[0-9]{6}$' }
+      responses:
+        '200': { $ref: '#/components/responses/Session' }
+        '401': { $ref: '#/components/responses/Error' }
+
+  /auth/refresh:
+    post:
+      tags: [auth]
+      operationId: refreshSession
+      summary: Rotate the refresh token (HttpOnly cookie). Reuse of a rotated token revokes the whole family.
+      parameters:
+        - name: refresh_token
+          in: cookie
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Session' }
+        '401': { $ref: '#/components/responses/Error' }
+
+  /auth/logout:
+    post:
+      tags: [auth]
+      operationId: logout
+      security: [ { userJwt: [] } ]
+      responses:
+        '204': { description: Logged out; refresh token family revoked }
+
+  /auth/handoff:
+    post:
+      tags: [auth, service]
+      operationId: createHandoff
+      summary: Product backend requests a single-use SSO handoff token (60 s) for a product account (§5.3)
+      security: [ { serviceKey: [ 'referrers:enroll' ] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [external_user_id]
+              properties:
+                external_user_id: { $ref: '#/components/schemas/ExternalId' }
+                return_path: { type: string, pattern: '^/[A-Za-z0-9/_-]*$', maxLength: 128, description: Portal-relative path only }
+      responses:
+        '201':
+          description: Handoff token
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [redirect_url, expires_at]
+                properties:
+                  redirect_url: { type: string, format: uri, description: 'portal/auth/callback?token=…' }
+                  expires_at: { $ref: '#/components/schemas/Timestamp' }
+        '404': { $ref: '#/components/responses/Error' }
+
+  /auth/handoff/exchange:
+    post:
+      tags: [auth]
+      operationId: exchangeHandoff
+      summary: Portal exchanges a handoff token for a session (single use)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [token]
+              properties:
+                token: { type: string, maxLength: 512 }
+      responses:
+        '200': { $ref: '#/components/responses/Session' }
+        '401': { $ref: '#/components/responses/Error' }
+
+  # ---------------------------------------------------------------- service
+  /referrers/enroll:
+    post:
+      tags: [service]
+      operationId: enrollReferrer
+      summary: Enroll the product's logged-in user as a referrer (§5.2). Idempotent per product account.
+      security: [ { serviceKey: [ 'referrers:enroll' ] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EnrollRequest' }
+      responses:
+        '201':
+          description: Enrolled
+          content: { application/json: { schema: { $ref: '#/components/schemas/EnrollResponse' } } }
+        '200':
+          description: Already enrolled
+          content: { application/json: { schema: { $ref: '#/components/schemas/EnrollResponse' } } }
+        '422': { $ref: '#/components/responses/Error' }
+
+  /attributions:
+    post:
+      tags: [service]
+      operationId: createAttribution
+      summary: Attribute a newly registered product account to a referrer (§7.2–7.3)
+      description: |
+        Idempotent on (product, external_user_id): 201 new, 200 existing (returns the existing attribution, even if
+        a different code is sent). Rejections return 422 with a reason code. Product SDKs fail soft: an error here
+        must never block signup.
+      security: [ { serviceKey: [ 'attribution:write' ] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AttributionRequest' }
+      responses:
+        '201':
+          description: Attributed
+          content: { application/json: { schema: { $ref: '#/components/schemas/Attribution' } } }
+        '200':
+          description: Already attributed (existing attribution returned)
+          content: { application/json: { schema: { $ref: '#/components/schemas/Attribution' } } }
+        '422':
+          description: |
+            Rejected. Codes: REFERRAL_CODE_INVALID, ATTRIBUTION_TOKEN_INVALID, ATTRIBUTION_TOKEN_EXPIRED,
+            ATTRIBUTION_NOT_NEW_ACCOUNT, ATTRIBUTION_TIMESTAMP_INVALID, SELF_REFERRAL, REFERRER_BLOCKED,
+            REFERRAL_CODE_REQUIRED.
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+
+  /attributions/{external_user_id}:
+    get:
+      tags: [service]
+      operationId: getAttribution
+      security: [ { serviceKey: [ 'attribution:write' ] } ]
+      parameters:
+        - name: external_user_id
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/ExternalId' }
+      responses:
+        '200':
+          description: Attribution
+          content: { application/json: { schema: { $ref: '#/components/schemas/Attribution' } } }
+        '404': { $ref: '#/components/responses/Error' }
+
+  /events:
+    post:
+      tags: [service]
+      operationId: ingestEvent
+      summary: Ingest a signed product event (§8). Persisted, then processed asynchronously.
+      description: |
+        Signature: `X-Signature: v1=<hex HMAC-SHA256(signing_secret, X-Signature-Timestamp + "." + raw_body)>`.
+        Timestamps more than 300 s from server time are rejected. Duplicate `event_id` with the same body returns
+        200 with the original platform event id; with a different body, 409 EVENT_ID_CONFLICT.
+      security: [ { serviceKey: [ 'events:write' ], eventSignature: [] } ]
+      parameters:
+        - name: X-Signature-Timestamp
+          in: header
+          required: true
+          schema: { type: integer, description: Unix seconds }
+        - name: X-Signature
+          in: header
+          required: true
+          schema: { type: string, pattern: '^v1=[0-9a-f]{64}$' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: './events/envelope.schema.json' }
+      responses:
+        '202':
+          description: Accepted for processing
+          content: { application/json: { schema: { $ref: '#/components/schemas/EventAccepted' } } }
+        '200':
+          description: Duplicate delivery of an already accepted event
+          content: { application/json: { schema: { $ref: '#/components/schemas/EventAccepted' } } }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+
+  /credits/balance:
+    get:
+      tags: [service]
+      operationId: getCreditBalance
+      summary: Spendable credit for the referrer linked to a product account (§11)
+      security: [ { serviceKey: [ 'credits:write' ] } ]
+      parameters:
+        - name: external_user_id
+          in: query
+          required: true
+          schema: { $ref: '#/components/schemas/ExternalId' }
+        - name: currency
+          in: query
+          required: true
+          schema: { $ref: '#/components/schemas/Currency' }
+      responses:
+        '200':
+          description: Balance
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [currency, spendable, max_per_invoice_pct]
+                properties:
+                  currency: { $ref: '#/components/schemas/Currency' }
+                  spendable: { $ref: '#/components/schemas/MinorAmount' }
+                  max_per_invoice_pct: { type: integer, minimum: 0, maximum: 100 }
+        '404':
+          description: CREDIT_ACCOUNT_NOT_LINKED (product account not linked to a referrer)
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+
+  /credits/reservations:
+    post:
+      tags: [service]
+      operationId: reserveCredit
+      summary: Reserve credit for an order (two-phase, TTL 15 min)
+      security: [ { serviceKey: [ 'credits:write' ] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReservationRequest' }
+      responses:
+        '201':
+          description: Reserved (reserved_amount may be less than requested, possibly 0)
+          content: { application/json: { schema: { $ref: '#/components/schemas/Reservation' } } }
+        '200':
+          description: Idempotent replay
+          content: { application/json: { schema: { $ref: '#/components/schemas/Reservation' } } }
+        '404': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+
+  /credits/reservations/{reservation_id}/capture:
+    post:
+      tags: [service]
+      operationId: captureCredit
+      summary: Capture a reservation after the product's charge succeeds (ADR 0011). Idempotent.
+      security: [ { serviceKey: [ 'credits:write' ] } ]
+      parameters:
+        - $ref: '#/components/parameters/ReservationId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [applied_amount, payment_id]
+              properties:
+                applied_amount: { $ref: '#/components/schemas/MinorAmount' }
+                payment_id: { $ref: '#/components/schemas/ExternalId' }
+      responses:
+        '200':
+          description: Captured (state CAPTURED, PARTIALLY_CAPTURED or LATE_CAPTURED)
+          content: { application/json: { schema: { $ref: '#/components/schemas/Reservation' } } }
+        '404': { $ref: '#/components/responses/Error' }
+
+  /credits/reservations/{reservation_id}/release:
+    post:
+      tags: [service]
+      operationId: releaseCredit
+      summary: Release a reservation (payment failed or abandoned). Idempotent.
+      security: [ { serviceKey: [ 'credits:write' ] } ]
+      parameters:
+        - $ref: '#/components/parameters/ReservationId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Released
+          content: { application/json: { schema: { $ref: '#/components/schemas/Reservation' } } }
+        '404': { $ref: '#/components/responses/Error' }
+        '409':
+          description: RESERVATION_ALREADY_CAPTURED
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+
+  /credits/refunds:
+    post:
+      tags: [service]
+      operationId: refundCredit
+      summary: Return captured credit to the referrer after the product refunds a payment that used it (§12)
+      security: [ { serviceKey: [ 'credits:write' ] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [reservation_id, amount, currency, idempotency_key]
+              properties:
+                reservation_id: { type: string, format: uuid }
+                refund_id: { $ref: '#/components/schemas/ExternalId' }
+                amount: { $ref: '#/components/schemas/PositiveMinorAmount' }
+                currency: { $ref: '#/components/schemas/Currency' }
+                idempotency_key: { $ref: '#/components/schemas/IdempotencyKeyValue' }
+      responses:
+        '201':
+          description: Credit returned
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [credit_refund_id, amount, currency, remaining_refundable]
+                properties:
+                  credit_refund_id: { type: string, format: uuid }
+                  amount: { $ref: '#/components/schemas/MinorAmount' }
+                  currency: { $ref: '#/components/schemas/Currency' }
+                  remaining_refundable: { $ref: '#/components/schemas/MinorAmount' }
+        '200': { description: Idempotent replay }
+        '422':
+          description: CREDIT_REFUND_EXCEEDS_CAPTURED
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+
+  /reconciliation/payments:
+    post:
+      tags: [service]
+      operationId: reconcilePayments
+      summary: Daily payment list for referred accounts to detect missed events (ADR 0017, Phase 13)
+      security: [ { serviceKey: [ 'events:write' ] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [business_date, payments]
+              properties:
+                business_date: { type: string, format: date }
+                payments:
+                  type: array
+                  maxItems: 10000
+                  items:
+                    type: object
+                    additionalProperties: false
+                    required: [payment_id, external_user_id, amount_net_paid, currency, paid_at]
+                    properties:
+                      payment_id: { $ref: '#/components/schemas/ExternalId' }
+                      external_user_id: { $ref: '#/components/schemas/ExternalId' }
+                      amount_net_paid: { $ref: '#/components/schemas/MinorAmount' }
+                      currency: { $ref: '#/components/schemas/Currency' }
+                      paid_at: { $ref: '#/components/schemas/Timestamp' }
+      responses:
+        '200':
+          description: Reconciliation result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  run_id: { type: string, format: uuid }
+                  missing_on_platform: { type: array, items: { $ref: '#/components/schemas/ExternalId' } }
+                  amount_mismatch: { type: array, items: { $ref: '#/components/schemas/ExternalId' } }
+
+  # ---------------------------------------------------------------- me
+  /me:
+    get:
+      tags: [me]
+      operationId: getMe
+      security: [ { userJwt: [] } ]
+      responses:
+        '200':
+          description: Current user
+          content: { application/json: { schema: { $ref: '#/components/schemas/Me' } } }
+
+  /me/codes:
+    get:
+      tags: [me]
+      operationId: listMyCodes
+      security: [ { userJwt: [] } ]
+      responses:
+        '200':
+          description: Codes
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/ReferralCode' } }
+    post:
+      tags: [me]
+      operationId: requestVanityCode
+      summary: Request a vanity code (needs admin approval, §6)
+      security: [ { userJwt: [] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [code]
+              properties:
+                code: { $ref: '#/components/schemas/ReferralCodeValue' }
+                campaign_slug: { type: string, maxLength: 64 }
+      responses:
+        '201':
+          description: Requested (status PENDING_APPROVAL)
+          content: { application/json: { schema: { $ref: '#/components/schemas/ReferralCode' } } }
+        '409': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+
+  /me/referrals:
+    get:
+      tags: [me]
+      operationId: listMyReferrals
+      summary: Referrals, masked per product visibility (§15, ADR 0016)
+      security: [ { userJwt: [] } ]
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+        - name: product
+          in: query
+          schema: { $ref: '#/components/schemas/ProductSlug' }
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/ReferralStatus' }
+      responses:
+        '200':
+          description: Page of referrals plus per-product aggregate counts for NONE-visibility products
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, next_cursor, aggregates]
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/ReferralView' } }
+                  next_cursor: { $ref: '#/components/schemas/NextCursor' }
+                  aggregates:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        product: { $ref: '#/components/schemas/ProductSlug' }
+                        referrals: { type: integer }
+                        converted: { type: integer }
+
+  /me/commissions:
+    get:
+      tags: [me]
+      operationId: listMyCommissions
+      security: [ { userJwt: [] } ]
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+        - name: state
+          in: query
+          schema: { $ref: '#/components/schemas/CommissionState' }
+      responses:
+        '200':
+          description: Page of commissions
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, next_cursor]
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/CommissionView' } }
+                  next_cursor: { $ref: '#/components/schemas/NextCursor' }
+
+  /me/wallet:
+    get:
+      tags: [me]
+      operationId: getMyWallet
+      summary: Balances per currency (§10.5, ADR 0007)
+      security: [ { userJwt: [] } ]
+      responses:
+        '200':
+          description: Wallet
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [balances]
+                properties:
+                  balances: { type: array, items: { $ref: '#/components/schemas/WalletBalance' } }
+
+  /me/wallet/transactions:
+    get:
+      tags: [me]
+      operationId: listMyWalletTransactions
+      summary: Ledger-backed history (journal transactions touching the user's accounts)
+      security: [ { userJwt: [] } ]
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+        - name: currency
+          in: query
+          schema: { $ref: '#/components/schemas/Currency' }
+      responses:
+        '200':
+          description: Page of wallet transactions
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, next_cursor]
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/WalletTransaction' } }
+                  next_cursor: { $ref: '#/components/schemas/NextCursor' }
+
+  /me/payout-methods:
+    get:
+      tags: [me]
+      operationId: listMyPayoutMethods
+      security: [ { userJwt: [] } ]
+      responses:
+        '200':
+          description: Methods (masked)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/PayoutMethod' } }
+    post:
+      tags: [me]
+      operationId: addPayoutMethod
+      security: [ { userJwt: [] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PayoutMethodCreate' }
+      responses:
+        '201':
+          description: Added (details stored encrypted; only the masked identifier is returned)
+          content: { application/json: { schema: { $ref: '#/components/schemas/PayoutMethod' } } }
+
+  /me/payouts:
+    get:
+      tags: [me]
+      operationId: listMyPayouts
+      security: [ { userJwt: [] } ]
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Page of payouts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/Payout' } }
+                  next_cursor: { $ref: '#/components/schemas/NextCursor' }
+    post:
+      tags: [me]
+      operationId: requestPayout
+      summary: Request a withdrawal (§13). Eligibility failures return 422 with a reason code.
+      security: [ { userJwt: [] } ]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [payout_method_id, amount, currency]
+              properties:
+                payout_method_id: { type: string, format: uuid }
+                amount: { $ref: '#/components/schemas/PositiveMinorAmount' }
+                currency: { $ref: '#/components/schemas/Currency' }
+      responses:
+        '201':
+          description: Requested
+          content: { application/json: { schema: { $ref: '#/components/schemas/Payout' } } }
+        '422': { $ref: '#/components/responses/Error' }
+
+  /me/analytics:
+    get:
+      tags: [me]
+      operationId: getMyAnalytics
+      security: [ { userJwt: [] } ]
+      parameters:
+        - name: from
+          in: query
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          schema: { type: string, format: date }
+        - name: granularity
+          in: query
+          schema: { type: string, enum: [day, week, month], default: day }
+      responses:
+        '200':
+          description: Time series for portal charts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  series:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        period_start: { type: string, format: date }
+                        referrals: { type: integer }
+                        conversions: { type: integer }
+                        earned: { $ref: '#/components/schemas/MinorAmount' }
+                        product: { $ref: '#/components/schemas/ProductSlug' }
+
+  /me/notifications:
+    get:
+      tags: [me]
+      operationId: listMyNotifications
+      security: [ { userJwt: [] } ]
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: In-app notifications
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string, format: uuid }
+                        category: { type: string }
+                        title: { type: string }
+                        body: { type: string }
+                        created_at: { $ref: '#/components/schemas/Timestamp' }
+                        read_at: { oneOf: [ { $ref: '#/components/schemas/Timestamp' }, { type: 'null' } ] }
+                  next_cursor: { $ref: '#/components/schemas/NextCursor' }
+
+  # ---------------------------------------------------------------- admin (selected; full list in docs/api.md)
+  /admin/commission-rules:
+    get:
+      tags: [admin]
+      operationId: adminListRules
+      security: [ { userJwt: [] } ]
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Rules (latest versions)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/CommissionRule' } }
+                  next_cursor: { $ref: '#/components/schemas/NextCursor' }
+    post:
+      tags: [admin]
+      operationId: adminCreateRule
+      summary: Create a rule (version 1). Ties are refused with 409 COMMISSION_RULE_TIE (ADR 0022).
+      security: [ { userJwt: [] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CommissionRuleInput' }
+      responses:
+        '201':
+          description: Created
+          content: { application/json: { schema: { $ref: '#/components/schemas/CommissionRule' } } }
+        '409': { $ref: '#/components/responses/Error' }
+        '422': { $ref: '#/components/responses/Error' }
+
+  /admin/commission-rules/{rule_id}/versions:
+    post:
+      tags: [admin]
+      operationId: adminReviseRule
+      summary: Edit = new version; previous version gets effective_until = new effective_from
+      security: [ { userJwt: [] } ]
+      parameters:
+        - name: rule_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CommissionRuleInput' }
+      responses:
+        '201':
+          description: New version
+          content: { application/json: { schema: { $ref: '#/components/schemas/CommissionRule' } } }
+        '409': { $ref: '#/components/responses/Error' }
+
+  /admin/commission-rules/simulate:
+    post:
+      tags: [admin]
+      operationId: adminSimulateRule
+      summary: Rule simulator (§17.1). Pure function; writes nothing.
+      security: [ { userJwt: [] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [product_slug, billing_reason, amount_net_paid, currency, paid_at]
+              properties:
+                product_slug: { $ref: '#/components/schemas/ProductSlug' }
+                plan_code: { type: string }
+                partner_id: { type: string, format: uuid }
+                partner_type: { type: string }
+                campaign_slug: { type: string }
+                billing_reason: { type: string, enum: [initial, renewal, upgrade, one_time] }
+                amount_net_paid: { $ref: '#/components/schemas/MinorAmount' }
+                currency: { $ref: '#/components/schemas/Currency' }
+                paid_at: { $ref: '#/components/schemas/Timestamp' }
+                months_since_conversion: { type: integer, minimum: 0 }
+                tier_count: { type: integer, minimum: 0 }
+      responses:
+        '200':
+          description: Winning rule, candidates considered, and the calculation snapshot
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [commission_amount, calculation_snapshot]
+                properties:
+                  winning_rule: { oneOf: [ { $ref: '#/components/schemas/CommissionRule' }, { type: 'null' } ] }
+                  candidates:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        rule_id: { type: string, format: uuid }
+                        version: { type: integer }
+                        specificity: { type: integer }
+                        priority: { type: integer }
+                  commission_amount: { $ref: '#/components/schemas/MinorAmount' }
+                  calculation_snapshot: { type: object }
+
+  /admin/events/{event_id}/replay:
+    post:
+      tags: [admin]
+      operationId: adminReplayEvent
+      summary: Replay a dead-lettered event. Idempotent; audited.
+      security: [ { userJwt: [] } ]
+      parameters:
+        - name: event_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid, description: Platform event id }
+      responses:
+        '202': { description: Requeued }
+        '409': { $ref: '#/components/responses/Error' }
+
+  /admin/payouts/{payout_id}/approve:
+    post:
+      tags: [admin]
+      operationId: adminApprovePayout
+      summary: Approve a payout. Above dual_approval_threshold needs two different FINANCE_ADMINs.
+      security: [ { userJwt: [] } ]
+      parameters:
+        - name: payout_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                note: { type: string, maxLength: 1000 }
+      responses:
+        '200':
+          description: Approval recorded; state APPROVED when enough approvals exist
+          content: { application/json: { schema: { $ref: '#/components/schemas/Payout' } } }
+        '403': { $ref: '#/components/responses/Error' }
+        '409': { $ref: '#/components/responses/Error' }
+
+  # ---------------------------------------------------------------- ops
+  /health:
+    get:
+      tags: [ops]
+      operationId: health
+      responses:
+        '200': { description: Process is up }
+  /ready:
+    get:
+      tags: [ops]
+      operationId: ready
+      responses:
+        '200':
+          description: DB, Redis reachable and migrations at head
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  database: { type: string, enum: [ok, fail] }
+                  redis: { type: string, enum: [ok, fail] }
+                  migrations: { type: string, enum: [ok, behind] }
+        '503': { description: Not ready }
+  /metrics:
+    get:
+      tags: [ops]
+      operationId: metrics
+      responses:
+        '200':
+          description: Prometheus exposition format
+          content:
+            text/plain: { schema: { type: string } }
+
+components:
+  securitySchemes:
+    serviceKey:
+      type: http
+      scheme: bearer
+      bearerFormat: '<key_id>.<secret>'
+      description: Product API client credential with scopes. Never sent from a browser.
+    eventSignature:
+      type: apiKey
+      in: header
+      name: X-Signature
+      description: HMAC-SHA256 over `timestamp + "." + raw_body` with the client's signing secret.
+    userJwt:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 15-minute access token held in memory by the portal/admin.
+
+  parameters:
+    ReferralCodePath:
+      name: code
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/ReferralCodeValue' }
+    ReservationId:
+      name: reservation_id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: { $ref: '#/components/schemas/IdempotencyKeyValue' }
+    Cursor:
+      name: cursor
+      in: query
+      schema: { type: string, maxLength: 512 }
+    Limit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 25 }
+
+  responses:
+    Error:
+      description: Error
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    RateLimited:
+      description: Too many requests
+      headers:
+        Retry-After: { schema: { type: integer } }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Session:
+      description: Session established. Refresh token set as HttpOnly, Secure, SameSite=Lax cookie.
+      headers:
+        Set-Cookie: { schema: { type: string } }
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [access_token, expires_in, user]
+            properties:
+              access_token: { type: string }
+              token_type: { type: string, const: Bearer }
+              expires_in: { type: integer, const: 900 }
+              user: { $ref: '#/components/schemas/Me' }
+
+  schemas:
+    Error:
+      type: object
+      required: [success, error]
+      properties:
+        success: { type: boolean, const: false }
+        error:
+          type: object
+          required: [code, message, request_id]
+          properties:
+            code: { type: string, pattern: '^[A-Z][A-Z0-9_]+$', description: See the error registry in docs/api.md }
+            message: { type: string }
+            request_id: { type: string }
+            details: { type: object }
+
+    Timestamp: { type: string, format: date-time }
+    Currency: { type: string, pattern: '^[A-Z]{3}$' }
+    MinorAmount: { type: integer, minimum: 0, format: int64 }
+    SignedMinorAmount: { type: integer, format: int64 }
+    PositiveMinorAmount: { type: integer, minimum: 1, format: int64 }
+    ExternalId: { type: string, minLength: 1, maxLength: 128, pattern: '^[A-Za-z0-9._:-]+$' }
+    ProductSlug: { type: string, pattern: '^[a-z][a-z0-9-]{1,31}$' }
+    IdempotencyKeyValue: { type: string, minLength: 8, maxLength: 128, pattern: '^[A-Za-z0-9._:-]+$' }
+    NextCursor: { oneOf: [ { type: string }, { type: 'null' } ] }
+    ReferralCodeValue:
+      type: string
+      description: 4–16 chars from A–Z and 2–9 excluding 0 O 1 I L. Case-insensitive on input.
+      pattern: '^[A-HJKMNP-Za-hjkmnp-z2-9]{4,16}$'
+
+    Signals:
+      type: object
+      additionalProperties: false
+      description: Raw signals; HMAC-hashed on receipt, never stored or logged raw.
+      properties:
+        ip: { type: string, maxLength: 45 }
+        email: { type: string, maxLength: 254 }
+        phone: { type: string, maxLength: 20 }
+        device_id: { type: string, maxLength: 128 }
+
+    PublicCodeCheck:
+      type: object
+      required: [valid]
+      properties:
+        valid: { type: boolean }
+        referrer_display_name: { type: [string, 'null'], description: Only when valid }
+
+    ProductTheme:
+      type: object
+      properties:
+        product: { $ref: '#/components/schemas/ProductSlug' }
+        name: { type: string }
+        logo_url: { type: string, format: uri }
+        colors:
+          type: object
+          additionalProperties: { type: string, pattern: '^#[0-9a-fA-F]{6}$' }
+        font_family: { type: string }
+
+    EnrollRequest:
+      type: object
+      additionalProperties: false
+      required: [external_user_id]
+      properties:
+        external_user_id: { $ref: '#/components/schemas/ExternalId' }
+        display_name: { type: string, maxLength: 80 }
+        email: { type: string, format: email, description: Used for the platform user profile only; never used to link accounts (§5.1) }
+        phone: { type: string, maxLength: 20 }
+        locale: { type: string, enum: [en, bn] }
+        signals: { $ref: '#/components/schemas/Signals' }
+    EnrollResponse:
+      type: object
+      required: [user_id, code, portal_url, link]
+      properties:
+        user_id: { type: string, format: uuid }
+        code: { $ref: '#/components/schemas/ReferralCodeValue' }
+        link: { type: string, format: uri, description: 'https://ref.example.com/r/{CODE}?product={slug}' }
+        portal_url: { type: string, format: uri }
+
+    AttributionRequest:
+      type: object
+      additionalProperties: false
+      required: [external_user_id, registered_at]
+      anyOf:
+        - required: [referral_code]
+        - required: [attribution_token]
+      properties:
+        external_user_id: { $ref: '#/components/schemas/ExternalId' }
+        registered_at: { $ref: '#/components/schemas/Timestamp' }
+        referral_code: { $ref: '#/components/schemas/ReferralCodeValue' }
+        attribution_token: { type: string, maxLength: 2048 }
+        signals: { $ref: '#/components/schemas/Signals' }
+    Attribution:
+      type: object
+      required: [referral_id, external_user_id, status, source, attributed_at]
+      properties:
+        referral_id: { type: string, format: uuid }
+        external_user_id: { $ref: '#/components/schemas/ExternalId' }
+        referral_code: { $ref: '#/components/schemas/ReferralCodeValue' }
+        campaign: { type: [string, 'null'] }
+        status: { $ref: '#/components/schemas/ReferralStatus' }
+        source: { type: string, enum: [TYPED_CODE, TOKEN, TYPED_AND_TOKEN, ADMIN] }
+        attributed_at: { $ref: '#/components/schemas/Timestamp' }
+
+    ReferralStatus:
+      type: string
+      enum: [ATTRIBUTED, TRIALING, CONVERTED, ACTIVE, INACTIVE, EXPIRED, REJECTED, REVOKED]
+    CommissionState:
+      type: string
+      enum: [PENDING, ON_HOLD, AVAILABLE, PARTIALLY_REVERSED, REVERSED, CANCELLED, REJECTED]
+
+    EventAccepted:
+      type: object
+      required: [platform_event_id, state]
+      properties:
+        platform_event_id: { type: string, format: uuid }
+        state: { type: string, enum: [RECEIVED, PROCESSING, PROCESSED, IGNORED, FAILED, WAITING_DEPENDENCY, DEAD_LETTER] }
+
+    ReservationRequest:
+      type: object
+      additionalProperties: false
+      required: [external_user_id, currency, requested_amount, order_ref, idempotency_key]
+      properties:
+        external_user_id: { $ref: '#/components/schemas/ExternalId' }
+        currency: { $ref: '#/components/schemas/Currency' }
+        requested_amount: { $ref: '#/components/schemas/PositiveMinorAmount' }
+        invoice_amount: { $ref: '#/components/schemas/PositiveMinorAmount', description: Required to apply the per-invoice cap; defaults to requested_amount }
+        order_ref: { type: string, maxLength: 128 }
+        idempotency_key: { $ref: '#/components/schemas/IdempotencyKeyValue' }
+    Reservation:
+      type: object
+      required: [reservation_id, state, currency, reserved_amount, expires_at]
+      properties:
+        reservation_id: { type: string, format: uuid }
+        state: { type: string, enum: [RESERVED, CAPTURED, PARTIALLY_CAPTURED, RELEASED, EXPIRED, LATE_CAPTURED] }
+        currency: { $ref: '#/components/schemas/Currency' }
+        requested_amount: { $ref: '#/components/schemas/MinorAmount' }
+        reserved_amount: { $ref: '#/components/schemas/MinorAmount' }
+        captured_amount: { $ref: '#/components/schemas/MinorAmount' }
+        expires_at: { $ref: '#/components/schemas/Timestamp' }
+
+    Me:
+      type: object
+      required: [id, roles]
+      properties:
+        id: { type: string, format: uuid }
+        display_name: { type: string }
+        email: { type: [string, 'null'] }
+        email_verified: { type: boolean }
+        phone_verified: { type: boolean }
+        kyc_status: { type: string, enum: [NONE, PENDING, VERIFIED, REJECTED] }
+        roles: { type: array, items: { type: string } }
+        locale: { type: string, enum: [en, bn] }
+        time_zone: { type: string }
+
+    ReferralCode:
+      type: object
+      properties:
+        code: { $ref: '#/components/schemas/ReferralCodeValue' }
+        kind: { type: string, enum: [DEFAULT, VANITY] }
+        status: { type: string, enum: [PENDING_APPROVAL, ACTIVE, DEACTIVATED, REJECTED] }
+        campaign: { type: [string, 'null'] }
+        links:
+          type: array
+          items:
+            type: object
+            properties:
+              product: { $ref: '#/components/schemas/ProductSlug' }
+              url: { type: string, format: uri }
+
+    ReferralView:
+      type: object
+      description: Display depends on product referrer_visibility (MASKED/FULL); NONE products appear only in aggregates.
+      properties:
+        referral_id: { type: string, format: uuid }
+        product: { $ref: '#/components/schemas/ProductSlug' }
+        display_name: { type: string, description: 'e.g. K****m' }
+        status: { $ref: '#/components/schemas/ReferralStatus' }
+        attributed_at: { $ref: '#/components/schemas/Timestamp' }
+        converted_at: { oneOf: [ { $ref: '#/components/schemas/Timestamp' }, { type: 'null' } ] }
+
+    CommissionView:
+      type: object
+      properties:
+        commission_id: { type: string, format: uuid }
+        product: { $ref: '#/components/schemas/ProductSlug' }
+        state: { $ref: '#/components/schemas/CommissionState' }
+        currency: { $ref: '#/components/schemas/Currency' }
+        amount: { $ref: '#/components/schemas/MinorAmount' }
+        reversed: { $ref: '#/components/schemas/MinorAmount' }
+        eligible_at: { $ref: '#/components/schemas/Timestamp' }
+        created_at: { $ref: '#/components/schemas/Timestamp' }
+
+    WalletBalance:
+      type: object
+      required: [currency, pending, available, credit, on_hold, lifetime_earned, withdrawable, spendable_credit, negative]
+      properties:
+        currency: { $ref: '#/components/schemas/Currency' }
+        pending: { $ref: '#/components/schemas/SignedMinorAmount' }
+        available: { $ref: '#/components/schemas/SignedMinorAmount' }
+        credit: { $ref: '#/components/schemas/SignedMinorAmount' }
+        on_hold: { $ref: '#/components/schemas/SignedMinorAmount', description: reserved + payout_hold }
+        lifetime_earned: { $ref: '#/components/schemas/SignedMinorAmount' }
+        withdrawable: { $ref: '#/components/schemas/MinorAmount' }
+        spendable_credit: { $ref: '#/components/schemas/MinorAmount' }
+        negative: { type: boolean }
+
+    WalletTransaction:
+      type: object
+      properties:
+        journal_transaction_id: { type: string, format: uuid }
+        type: { type: string, description: 'Posting rule name, e.g. COMMISSION_CONFIRMED (P2)' }
+        currency: { $ref: '#/components/schemas/Currency' }
+        changes:
+          type: array
+          description: Net change per user balance bucket (positive = balance increased)
+          items:
+            type: object
+            properties:
+              bucket: { type: string, enum: [pending, available, credit, reserved, payout_hold] }
+              amount: { $ref: '#/components/schemas/SignedMinorAmount' }
+        description: { type: string }
+        created_at: { $ref: '#/components/schemas/Timestamp' }
+
+    PayoutMethodCreate:
+      type: object
+      additionalProperties: false
+      required: [method, details]
+      properties:
+        method: { type: string, enum: [bkash, nagad, bank_transfer] }
+        details:
+          type: object
+          description: bkash/nagad - {account_number}; bank_transfer - {account_name, account_number, bank_name, branch, routing_number}
+          additionalProperties: { type: string, maxLength: 128 }
+    PayoutMethod:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        method: { type: string, enum: [bkash, nagad, bank_transfer] }
+        masked_identifier: { type: string }
+        status: { type: string, enum: [ACTIVE, DISABLED] }
+        verified_at: { oneOf: [ { $ref: '#/components/schemas/Timestamp' }, { type: 'null' } ] }
+
+    Payout:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        state: { type: string, enum: [REQUESTED, UNDER_REVIEW, APPROVED, PROCESSING, PAID, REJECTED, CANCELLED, FAILED, RETURNED] }
+        currency: { $ref: '#/components/schemas/Currency' }
+        amount: { $ref: '#/components/schemas/PositiveMinorAmount' }
+        tax_withheld: { $ref: '#/components/schemas/MinorAmount' }
+        net: { $ref: '#/components/schemas/MinorAmount' }
+        payout_method_id: { type: string, format: uuid }
+        created_at: { $ref: '#/components/schemas/Timestamp' }
+
+    CommissionRuleInput:
+      allOf:
+        - $ref: '#/components/schemas/CommissionRuleFields'
+      required: [commission_type, currency, reward_split, effective_from, priority]
+      unevaluatedProperties: false
+    CommissionRuleFields:
+      type: object
+      properties:
+        product_slug: { oneOf: [ { $ref: '#/components/schemas/ProductSlug' }, { type: 'null' } ] }
+        plan_code: { type: [string, 'null'] }
+        partner_type: { type: [string, 'null'] }
+        partner_id: { type: [string, 'null'], format: uuid }
+        campaign_slug: { type: [string, 'null'] }
+        billing_reason: { type: [string, 'null'], enum: [initial, renewal, upgrade, one_time, null] }
+        commission_type: { type: string, enum: [PERCENTAGE, FIXED, TIERED] }
+        rate_bps: { type: integer, minimum: 0, maximum: 10000 }
+        fixed_amount: { $ref: '#/components/schemas/MinorAmount' }
+        tier_schedule:
+          type: object
+          properties:
+            period: { type: string, enum: [lifetime, calendar_month, rolling_30d] }
+            tiers:
+              type: array
+              items:
+                type: object
+                required: [min_conversions, rate_bps]
+                properties:
+                  min_conversions: { type: integer, minimum: 0 }
+                  rate_bps: { type: integer, minimum: 0, maximum: 10000 }
+        currency: { $ref: '#/components/schemas/Currency' }
+        min_net_paid: { $ref: '#/components/schemas/MinorAmount' }
+        max_commission: { $ref: '#/components/schemas/MinorAmount' }
+        eligible_months_from_conversion: { type: integer, minimum: 0 }
+        max_payments_per_referral: { type: integer, minimum: 1 }
+        reward_split:
+          type: object
+          additionalProperties: false
+          properties:
+            WALLET: { type: integer, minimum: 0, maximum: 100 }
+            CREDIT_ONLY: { type: integer, minimum: 0, maximum: 100 }
+          description: Values sum to 100
+        confirmation_days: { type: [integer, 'null'], minimum: 0 }
+        effective_from: { $ref: '#/components/schemas/Timestamp' }
+        effective_until: { oneOf: [ { $ref: '#/components/schemas/Timestamp' }, { type: 'null' } ] }
+        priority: { type: integer }
+    CommissionRule:
+      allOf:
+        - $ref: '#/components/schemas/CommissionRuleFields'
+        - type: object
+          properties:
+            rule_id: { type: string, format: uuid }
+            version: { type: integer }
+            specificity: { type: integer, description: ADR 0022 bitmask }
+            status: { type: string, enum: [DRAFT, ACTIVE, CLOSED] }

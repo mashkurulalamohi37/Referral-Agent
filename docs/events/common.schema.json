@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.referral-platform.example/events/v1/common.schema.json",
+  "title": "Common definitions",
+  "$defs": {
+    "external_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "(Z|[+-]00:00)$",
+      "description": "RFC 3339, UTC only."
+    },
+    "currency": {
+      "type": "string",
+      "pattern": "^[A-Z]{3}$",
+      "description": "ISO-4217. Only BDT is enabled in v1 (Q13)."
+    },
+    "minor_amount": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991,
+      "description": "Integer minor units (poisha for BDT)."
+    },
+    "positive_minor_amount": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "plan_code": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9._-]+$"
+    },
+    "signals": {
+      "type": "object",
+      "description": "Raw risk signals over TLS. HMAC-hashed immediately on receipt; never stored or logged raw (§14.1).",
+      "additionalProperties": false,
+      "properties": {
+        "ip": {
+          "type": "string",
+          "maxLength": 45
+        },
+        "email": {
+          "type": "string",
+          "maxLength": 254
+        },
+        "phone": {
+          "type": "string",
+          "maxLength": 20
+        },
+        "device_id": {
+          "type": "string",
+          "maxLength": 128
+        }
+      }
+    }
+  }
+}

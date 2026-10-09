@@ -1,0 +1,64 @@
+:root {
+  --admin-bg: #0b0f19;
+  --admin-surface: #111827;
+  --admin-surface-card: #1e293b;
+  --admin-border: rgba(255, 255, 255, 0.08);
+  --admin-primary: #6366f1;
+  --admin-text-main: #f8fafc;
+  --admin-text-sub: #94a3b8;
+  --admin-font: 'Inter', system-ui, -apple-system, sans-serif;
+  --admin-mono: 'JetBrains Mono', monospace;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--admin-font);
+  background: var(--admin-bg);
+  color: var(--admin-text-main);
+  min-height: 100vh;
+}
+
+.admin-card {
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.badge-tag {
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.badge-success { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+.badge-warning { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+.badge-danger { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+.badge-info { background: rgba(99, 102, 241, 0.2); color: #818cf8; }
+
+table.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+table.admin-table th {
+  padding: 12px 14px;
+  font-size: 0.75rem;
+  color: var(--admin-text-sub);
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--admin-border);
+}
+
+table.admin-table td {
+  padding: 14px;
+  font-size: 0.875rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}

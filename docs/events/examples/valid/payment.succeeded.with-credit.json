@@ -1,0 +1,21 @@
+{
+  "event_id": "evt_01J9ZM0000CREDIT0000000001",
+  "event_type": "payment.succeeded",
+  "schema_version": 1,
+  "occurred_at": "2026-11-08T09:30:00Z",
+  "data": {
+    "payment_id": "PP-PAY-123",
+    "subscription_id": "PP-SUB-5",
+    "external_user_id": "PP-RAHIM",
+    "plan_code": "pos-basic",
+    "billing_reason": "renewal",
+    "currency": "BDT",
+    "amount_gross": 115000,
+    "discount_amount": 0,
+    "tax_amount": 15000,
+    "credit_applied_amount": 20000,
+    "credit_reservation_id": "01929a4e-7c3b-7d2e-9f10-2b3c4d5e6f70",
+    "amount_net_paid": 80000,
+    "paid_at": "2026-11-08T09:30:00Z"
+  }
+}

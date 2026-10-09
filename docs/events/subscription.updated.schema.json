@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.referral-platform.example/events/v1/subscription.updated.schema.json",
+  "title": "subscription.updated data",
+  "description": "",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "subscription_id",
+    "external_user_id",
+    "plan_code",
+    "status",
+    "period_start",
+    "period_end"
+  ],
+  "properties": {
+    "subscription_id": {
+      "$ref": "common.schema.json#/$defs/external_id"
+    },
+    "external_user_id": {
+      "$ref": "common.schema.json#/$defs/external_id"
+    },
+    "plan_code": {
+      "$ref": "common.schema.json#/$defs/plan_code"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "trialing",
+        "active",
+        "past_due",
+        "paused",
+        "cancelled",
+        "expired"
+      ]
+    },
+    "period_start": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "period_end": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    }
+  }
+}

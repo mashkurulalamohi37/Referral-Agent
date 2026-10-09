@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.referral-platform.example/events/v1/user.registered.schema.json",
+  "title": "user.registered data",
+  "description": "Informational: upserts the product account and records hashed signals. Never attributes (ADR 0015).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "external_user_id",
+    "registered_at"
+  ],
+  "properties": {
+    "external_user_id": {
+      "$ref": "common.schema.json#/$defs/external_id"
+    },
+    "registered_at": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "signals": {
+      "$ref": "common.schema.json#/$defs/signals"
+    }
+  }
+}

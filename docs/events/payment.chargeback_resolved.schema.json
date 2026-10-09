@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.referral-platform.example/events/v1/payment.chargeback_resolved.schema.json",
+  "title": "payment.chargeback_resolved data",
+  "description": "New in ADR 0010. 'won' reinstates the reversed commission.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "chargeback_id",
+    "payment_id",
+    "outcome",
+    "resolved_at"
+  ],
+  "properties": {
+    "chargeback_id": {
+      "$ref": "common.schema.json#/$defs/external_id"
+    },
+    "payment_id": {
+      "$ref": "common.schema.json#/$defs/external_id"
+    },
+    "outcome": {
+      "type": "string",
+      "enum": [
+        "won",
+        "lost"
+      ]
+    },
+    "resolved_at": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    }
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "event_id": "evt_bad_5",
+  "event_type": "payment.chargeback",
+  "schema_version": 1,
+  "occurred_at": "2026-12-01T00:00:00Z",
+  "data": { "payment_id": "P1", "amount": 100, "currency": "BDT", "opened_at": "2026-12-01T00:00:00Z" }
+}

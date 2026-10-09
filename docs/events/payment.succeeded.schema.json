@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.referral-platform.example/events/v1/payment.succeeded.schema.json",
+  "title": "payment.succeeded data",
+  "description": "Commission base is amount_net_paid (§9.3). If credit was applied, credit_reservation_id is required and the reservation is captured (§11, ADR 0011).",
+  "type": "object",
+  "additionalProperties": false,
+  "if": {
+    "properties": { "credit_applied_amount": { "exclusiveMinimum": 0 } },
+    "required": ["credit_applied_amount"]
+  },
+  "then": { "required": ["credit_reservation_id"] },
+  "required": [
+    "payment_id",
+    "subscription_id",
+    "external_user_id",
+    "plan_code",
+    "billing_reason",
+    "currency",
+    "amount_gross",
+    "discount_amount",
+    "tax_amount",
+    "credit_applied_amount",
+    "amount_net_paid",
+    "paid_at"
+  ],
+  "properties": {
+    "payment_id": {
+      "$ref": "common.schema.json#/$defs/external_id"
+    },
+    "subscription_id": {
+      "oneOf": [
+        {
+          "$ref": "common.schema.json#/$defs/external_id"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "null for billing_reason=one_time"
+    },
+    "external_user_id": {
+      "$ref": "common.schema.json#/$defs/external_id"
+    },
+    "plan_code": {
+      "$ref": "common.schema.json#/$defs/plan_code"
+    },
+    "billing_reason": {
+      "type": "string",
+      "enum": [
+        "initial",
+        "renewal",
+        "upgrade",
+        "one_time"
+      ]
+    },
+    "currency": {
+      "$ref": "common.schema.json#/$defs/currency"
+    },
+    "amount_gross": {
+      "$ref": "common.schema.json#/$defs/minor_amount"
+    },
+    "discount_amount": {
+      "$ref": "common.schema.json#/$defs/minor_amount"
+    },
+    "tax_amount": {
+      "$ref": "common.schema.json#/$defs/minor_amount"
+    },
+    "credit_applied_amount": {
+      "$ref": "common.schema.json#/$defs/minor_amount"
+    },
+    "credit_reservation_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Required when credit_applied_amount > 0."
+    },
+    "amount_net_paid": {
+      "$ref": "common.schema.json#/$defs/minor_amount",
+      "description": "Must equal amount_gross - discount_amount - tax_amount - credit_applied_amount (validated server-side: AMOUNT_INCONSISTENT)."
+    },
+    "paid_at": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    },
+    "payment_fingerprint": {
+      "type": "string",
+      "maxLength": 256,
+      "description": "Raw; HMAC-hashed on receipt."
+    }
+  }
+}

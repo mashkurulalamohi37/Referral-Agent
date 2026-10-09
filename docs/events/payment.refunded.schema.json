@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.referral-platform.example/events/v1/payment.refunded.schema.json",
+  "title": "payment.refunded data",
+  "description": "Reverses commission cumulatively against cash collected (ADR 0009).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "refund_id",
+    "payment_id",
+    "amount_refunded",
+    "currency",
+    "refunded_at"
+  ],
+  "properties": {
+    "refund_id": {
+      "$ref": "common.schema.json#/$defs/external_id"
+    },
+    "payment_id": {
+      "$ref": "common.schema.json#/$defs/external_id"
+    },
+    "external_user_id": {
+      "$ref": "common.schema.json#/$defs/external_id"
+    },
+    "amount_refunded": {
+      "$ref": "common.schema.json#/$defs/positive_minor_amount"
+    },
+    "currency": {
+      "$ref": "common.schema.json#/$defs/currency"
+    },
+    "refunded_at": {
+      "$ref": "common.schema.json#/$defs/timestamp"
+    }
+  }
+}
