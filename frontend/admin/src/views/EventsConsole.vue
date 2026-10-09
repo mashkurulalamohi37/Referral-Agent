@@ -1,53 +1,76 @@
 <template>
   <div style="display: flex; flex-direction: column; gap: 24px;">
-    <div style="display: flex; justify-content: space-between; alignItems: center;">
+    <!-- Page Header -->
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px;">
       <div>
-        <h1 style="font-size: 1.6rem; font-weight: 800;">Inbound Events Console</h1>
-        <p style="color: var(--admin-text-sub); font-size: 0.9rem; margin-top: 4px;">
-          Inspect, monitor and replay inbound events with signature & idempotency tracking (§8, §17.1).
+        <h1 style="font-size: 1.375rem; font-weight: 700; color: var(--admin-text-main); letter-spacing: -0.01em;">
+          Inbound Webhook Events & Dead-Letter Replay
+        </h1>
+        <p style="color: var(--admin-text-sub); font-size: 0.875rem; margin-top: 2px;">
+          Live event stream with HMAC-SHA256 signature verification and idempotency locks (§8, §17.1).
         </p>
       </div>
-      <button style="background: rgba(255,255,255,0.1); color: #fff; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--admin-border); cursor: pointer; font-size: 0.85rem;">
+
+      <button class="admin-btn admin-btn-secondary" style="height: 36px; font-size: 0.8125rem;">
         Replay Dead Letters (0)
       </button>
     </div>
 
-    <div class="admin-card">
+    <!-- Events Table Card -->
+    <div class="admin-card" style="padding: 0; overflow: hidden;">
       <table class="admin-table">
         <thead>
           <tr>
             <th>Event ID</th>
-            <th>Type</th>
-            <th>Product</th>
-            <th>Occurred At</th>
-            <th>State</th>
-            <th>Action</th>
+            <th>Event Contract Type</th>
+            <th>Product Tenant</th>
+            <th>Occurred At (UTC)</th>
+            <th>Processing State</th>
+            <th class="text-right">Action</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td><code style="font-family: var(--admin-mono); font-size: 0.8rem;">evt_01a11f92a1</code></td>
-            <td><strong>payment.succeeded</strong></td>
-            <td>Healora</td>
-            <td>2026-10-09 09:12:00</td>
-            <td><span class="badge-tag badge-success">PROCESSED</span></td>
-            <td><button style="background: none; border: none; color: #818cf8; cursor: pointer;">Inspect</button></td>
+            <td><code class="num-mono" style="font-size: 0.8125rem; color: var(--admin-text-main); font-weight: 600;">evt_01a11f92a1</code></td>
+            <td>
+              <span style="font-weight: 600; color: var(--admin-text-main);">payment.succeeded</span>
+            </td>
+            <td><span class="badge-tag badge-info">Healora</span></td>
+            <td class="num-mono" style="font-size: 0.8125rem; color: var(--admin-text-sub);">2026-10-09 09:12:00</td>
+            <td><span class="badge-tag badge-success"><span class="badge-tag-dot" />PROCESSED</span></td>
+            <td class="text-right">
+              <button class="admin-btn admin-btn-secondary" style="padding: 4px 10px; font-size: 0.75rem;">
+                Inspect
+              </button>
+            </td>
           </tr>
           <tr>
-            <td><code style="font-family: var(--admin-mono); font-size: 0.8rem;">evt_01a11f92a2</code></td>
-            <td><strong>payment.refunded</strong></td>
-            <td>PulsePOS</td>
-            <td>2026-10-09 08:30:15</td>
-            <td><span class="badge-tag badge-success">PROCESSED</span></td>
-            <td><button style="background: none; border: none; color: #818cf8; cursor: pointer;">Inspect</button></td>
+            <td><code class="num-mono" style="font-size: 0.8125rem; color: var(--admin-text-main); font-weight: 600;">evt_01a11f92a2</code></td>
+            <td>
+              <span style="font-weight: 600; color: var(--admin-text-main);">payment.refunded</span>
+            </td>
+            <td><span class="badge-tag badge-warning">PulsePOS</span></td>
+            <td class="num-mono" style="font-size: 0.8125rem; color: var(--admin-text-sub);">2026-10-09 08:30:15</td>
+            <td><span class="badge-tag badge-success"><span class="badge-tag-dot" />PROCESSED</span></td>
+            <td class="text-right">
+              <button class="admin-btn admin-btn-secondary" style="padding: 4px 10px; font-size: 0.75rem;">
+                Inspect
+              </button>
+            </td>
           </tr>
           <tr>
-            <td><code style="font-family: var(--admin-mono); font-size: 0.8rem;">evt_01a11f92a3</code></td>
-            <td><strong>subscription.created</strong></td>
-            <td>Healora</td>
-            <td>2026-10-08 19:44:00</td>
-            <td><span class="badge-tag badge-success">PROCESSED</span></td>
-            <td><button style="background: none; border: none; color: #818cf8; cursor: pointer;">Inspect</button></td>
+            <td><code class="num-mono" style="font-size: 0.8125rem; color: var(--admin-text-main); font-weight: 600;">evt_01a11f92a3</code></td>
+            <td>
+              <span style="font-weight: 600; color: var(--admin-text-main);">subscription.created</span>
+            </td>
+            <td><span class="badge-tag badge-info">Healora</span></td>
+            <td class="num-mono" style="font-size: 0.8125rem; color: var(--admin-text-sub);">2026-10-08 19:44:00</td>
+            <td><span class="badge-tag badge-success"><span class="badge-tag-dot" />PROCESSED</span></td>
+            <td class="text-right">
+              <button class="admin-btn admin-btn-secondary" style="padding: 4px 10px; font-size: 0.75rem;">
+                Inspect
+              </button>
+            </td>
           </tr>
         </tbody>
       </table>

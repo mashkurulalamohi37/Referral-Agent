@@ -17,58 +17,61 @@ export const ReferralSummaryCard: React.FC<ReferralSummaryCardProps> = ({
   return (
     <div
       style={{
-        background: 'linear-gradient(135deg, #1e1b4b, #0f172a)',
-        border: '1px solid rgba(99, 102, 241, 0.3)',
-        borderRadius: '16px',
-        padding: '20px',
-        color: '#fff',
+        backgroundColor: '#ffffff',
+        border: '1px solid #e2e8f0',
+        borderRadius: '12px',
+        padding: '18px 20px',
+        color: '#0f172a',
         display: 'flex',
         flexDirection: 'column',
         gap: '12px',
-        boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)',
+        boxShadow: '0 1px 3px rgba(15, 23, 42, 0.08)',
+        fontFamily: 'Inter, system-ui, sans-serif',
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Gift size={20} color="#818cf8" />
-          <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>Your Referral Rewards</span>
+          <div style={{ width: '28px', height: '28px', borderRadius: '6px', backgroundColor: '#eef2ff', color: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Gift size={16} />
+          </div>
+          <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>Referral Rewards</span>
         </div>
-        <span style={{ background: 'rgba(99, 102, 241, 0.2)', color: '#818cf8', padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontFamily: 'monospace', fontWeight: 700 }}>
+        <span style={{ backgroundColor: '#f1f5f9', color: '#475569', padding: '3px 8px', borderRadius: '6px', fontSize: '0.75rem', fontFamily: 'monospace', fontWeight: 700 }}>
           {referralCode}
         </span>
       </div>
 
-      <div style={{ display: 'flex', gap: '16px', marginTop: '4px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', padding: '10px', backgroundColor: '#f8fafc', borderRadius: '8px' }}>
         <div>
-          <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Total Earned</div>
-          <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#34d399' }}>৳{totalEarnedBdt.toLocaleString()}</div>
+          <div style={{ fontSize: '0.6875rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Total Earned</div>
+          <div style={{ fontSize: '1.125rem', fontWeight: 700, color: '#0f172a', fontFamily: 'monospace' }}>৳{totalEarnedBdt.toLocaleString()}</div>
         </div>
         <div>
-          <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Spendable Credit</div>
-          <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#818cf8' }}>৳{availableCreditBdt.toLocaleString()}</div>
+          <div style={{ fontSize: '0.6875rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Spendable Credit</div>
+          <div style={{ fontSize: '1.125rem', fontWeight: 700, color: '#4f46e5', fontFamily: 'monospace' }}>৳{availableCreditBdt.toLocaleString()}</div>
         </div>
       </div>
 
       <button
         onClick={onOpenPortal}
         style={{
-          background: 'rgba(255, 255, 255, 0.1)',
-          border: '1px solid rgba(255, 255, 255, 0.15)',
-          color: '#fff',
-          borderRadius: '8px',
-          padding: '8px 12px',
-          fontSize: '0.85rem',
+          backgroundColor: '#ffffff',
+          border: '1px solid #cbd5e1',
+          color: '#0f172a',
+          borderRadius: '6px',
+          padding: '7px 12px',
+          fontSize: '0.8125rem',
           fontWeight: 600,
           cursor: 'pointer',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           gap: '6px',
-          marginTop: '6px',
+          transition: 'background-color 0.15s ease',
         }}
       >
-        <span>View Partner Portal</span>
-        <ArrowRight size={14} />
+        <span>Open Partner Portal</span>
+        <ArrowRight size={13} />
       </button>
     </div>
   );

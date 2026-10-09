@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CheckCircle, AlertCircle } from 'lucide-react';
+import { CheckCircle2, Tag } from 'lucide-react';
 
 export interface ReferralCodeInputProps {
   value?: string;
@@ -12,7 +12,7 @@ export const ReferralCodeInput: React.FC<ReferralCodeInputProps> = ({
   value = '',
   onChange,
   onValidCode,
-  placeholder = 'Enter referral code (e.g. RAHIM82)',
+  placeholder = 'Referral code (e.g. RAHIM82)',
 }) => {
   const [code, setCode] = useState(value);
   const [status, setStatus] = useState<'idle' | 'valid' | 'invalid'>('idle');
@@ -23,18 +23,15 @@ export const ReferralCodeInput: React.FC<ReferralCodeInputProps> = ({
     onChange?.(uppercase);
 
     if (uppercase.length >= 6) {
-      // Valid formatting check
       setStatus('valid');
       onValidCode?.(uppercase);
-    } else if (uppercase.length > 0) {
-      setStatus('idle');
     } else {
       setStatus('idle');
     }
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%', fontFamily: 'Inter, system-ui, sans-serif' }}>
       <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
         <input
           type="text"
@@ -43,26 +40,26 @@ export const ReferralCodeInput: React.FC<ReferralCodeInputProps> = ({
           placeholder={placeholder}
           style={{
             width: '100%',
-            background: 'rgba(17, 24, 39, 0.8)',
-            border: `1px solid ${status === 'valid' ? '#10b981' : 'rgba(255, 255, 255, 0.15)'}`,
-            borderRadius: '10px',
-            color: '#fff',
-            padding: '12px 16px',
-            fontSize: '0.95rem',
-            letterSpacing: '0.05em',
+            height: '40px',
+            backgroundColor: '#ffffff',
+            border: `1px solid ${status === 'valid' ? '#059669' : '#cbd5e1'}`,
+            borderRadius: '8px',
+            color: '#0f172a',
+            padding: '8px 36px 8px 12px',
+            fontSize: '0.875rem',
             fontFamily: 'monospace',
             outline: 'none',
+            boxShadow: '0 1px 2px rgba(15, 23, 42, 0.05)',
+            letterSpacing: '0.04em',
           }}
         />
-        {status === 'valid' && (
-          <div style={{ position: 'absolute', right: '14px', color: '#10b981', display: 'flex', alignItems: 'center' }}>
-            <CheckCircle size={18} />
-          </div>
-        )}
+        <div style={{ position: 'absolute', right: '12px', color: status === 'valid' ? '#059669' : '#94a3b8', display: 'flex', alignItems: 'center' }}>
+          {status === 'valid' ? <CheckCircle2 size={17} /> : <Tag size={15} />}
+        </div>
       </div>
       {status === 'valid' && (
-        <span style={{ fontSize: '0.8rem', color: '#34d399', fontWeight: 500 }}>
-          ✓ Referral code applied! You will receive connected benefits upon checkout.
+        <span style={{ fontSize: '0.75rem', color: '#059669', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '4px' }}>
+          ✓ Referral code applied! Connected affiliate benefits will be tracked.
         </span>
       )}
     </div>
