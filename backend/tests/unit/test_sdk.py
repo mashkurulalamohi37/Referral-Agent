@@ -50,3 +50,20 @@ def test_typed_event_envelope_generation() -> None:
     assert envelope["data"]["payment_id"] == "pay_999"
     assert envelope["data"]["amount_gross"] == 200000
     assert envelope["data"]["amount_net_paid"] == 200000
+
+
+def test_ticket_sdk_models() -> None:
+    from referral_client.models import TicketCreateRequest
+
+    req = TicketCreateRequest(
+        title="Offline POS Sync Crash",
+        category="SYNC_FAILURE",
+        severity="CRITICAL",
+        description="Offline transaction batch upload timed out with error 504.",
+        external_user_id="merchant_123",
+        system_diagnostics={"terminal_id": "POS-01", "app_version": "v3.1.0"},
+    )
+    assert req.title == "Offline POS Sync Crash"
+    assert req.severity == "CRITICAL"
+    assert req.system_diagnostics["terminal_id"] == "POS-01"
+

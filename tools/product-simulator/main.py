@@ -212,3 +212,38 @@ async def simulate_chargeback(payment_id: str, amount: int) -> dict[str, Any]:
     cb_event = PaymentChargeback(payment_id=payment_id, amount=amount)
     event_res = await client.send_event(cb_event)
     return {"payment_id": payment_id, "amount": amount, "event_receipt": event_res}
+
+
+class TicketReportRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    product_slug: str = "pulsepos"
+    title: str = "Terminal Offline Sync Failure"
+    category: str = "SYNC_FAILURE"
+    severity: str = "CRITICAL"
+    description: str = "Offline transactions failed to upload after network restored. Error 504 on queue."
+    external_user_id: str | None = "merchant_dhk_09"
+    system_diagnostics: dict[str, Any] = Field(default_factory=lambda: {
+        "app_version": "v3.1.2",
+        "terminal_id": "POS-TERM-44",
+        "os": "Android 13",
+    })
+
+
+@app.post("/simulator/tickets/report-issue")
+async def simulate_ticket_report(req: TicketReportRequest) -> dict[str, Any]:
+    """Simulates a connected product reporting a system issue or bug via the SDK."""
+    ticket = await client.submit_ticket(
+        product_slug=req.product_slug,
+        title=req.title,
+        category=req.category,
+        severity=req.severity,
+        description=req.description,
+        external_user_id=req.external_user_id,
+        system_diagnostics=req.system_diagnostics,
+    )
+    return {
+        "success": True,
+        "ticket": ticket.model_dump(),
+    }
+

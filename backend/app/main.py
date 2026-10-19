@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import (
+    admin,
     auth,
     catalog,
     commissions,
@@ -22,6 +23,7 @@ from app.api import (
     referrals,
     reporting,
     risk,
+    tickets,
 )
 from app.core.config import Settings, get_settings
 from app.core.http import RequestContextMiddleware, install_error_handlers
@@ -79,5 +81,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(risk.router)
     app.include_router(notifications.router)
     app.include_router(reporting.router)
+    app.include_router(tickets.router)
+    app.include_router(admin.router)
     return app
 

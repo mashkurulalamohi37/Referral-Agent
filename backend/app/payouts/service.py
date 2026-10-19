@@ -340,3 +340,22 @@ async def get_total_paid_out(session: AsyncSession) -> int:
     )
     return int((await session.execute(payout_stmt)).scalar() or 0)
 
+
+async def list_payouts(
+    session: AsyncSession,
+    *,
+    user_id: uuid.UUID | None = None,
+    state: str | None = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> list[Payout]:
+    """Lists payouts with optional user_id and state filter."""
+    stmt = select(Payout).order_by(Payout.created_at.desc())
+    if user_id:
+        stmt = stmt.where(Payout.user_id == user_id)
+    if state:
+        stmt = stmt.where(Payout.state == state)
+    stmt = stmt.limit(limit).offset(offset)
+    res = await session.execute(stmt)
+    return list(res.scalars().all())
+

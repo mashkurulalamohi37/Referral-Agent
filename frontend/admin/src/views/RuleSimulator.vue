@@ -1,166 +1,148 @@
 <template>
-  <div style="display: flex; flex-direction: column; gap: 24px;">
-    <!-- Page Header -->
-    <div>
-      <h1 style="font-size: 1.375rem; font-weight: 700; color: var(--admin-text-main); letter-spacing: -0.01em;">
-        Commission Rule Specificity Simulator
-      </h1>
-      <p style="color: var(--admin-text-sub); font-size: 0.875rem; margin-top: 2px;">
-        Simulate rule resolution rankings, ADR 0022 bitmask scoring, and reward split calculations in real-time (§9.2, §17.1).
-      </p>
+  <div class="page">
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">Rule simulator</h1>
+        <p class="page-sub">See which commission rule wins for a payment and how the amount is calculated. Nothing is saved.</p>
+      </div>
     </div>
 
-    <!-- Simulator Layout -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 20px;">
-      <!-- Simulation Input Parameters Card -->
-      <div class="admin-card">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px; align-items: start">
+      <form class="admin-card" style="display: flex; flex-direction: column; gap: 14px" @submit.prevent>
+        <h2 class="card-title">Payment</h2>
+        <div class="field">
+          <label class="field__label" for="sim-product">Product</label>
+          <select id="sim-product" v-model="form.product" class="admin-select">
+            <option value="healora">Healora</option>
+            <option value="pulsepos">PulsePOS</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field__label" for="sim-reason">Billing reason</label>
+          <select id="sim-reason" v-model="form.billingReason" class="admin-select">
+            <option value="initial">First payment</option>
+            <option value="renewal">Renewal</option>
+            <option value="upgrade">Upgrade</option>
+            <option value="one_time">One-time</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field__label" for="sim-partner">Partner type</label>
+          <select id="sim-partner" v-model="form.partnerType" class="admin-select">
+            <option value="CUSTOMER">Customer</option>
+            <option value="AFFILIATE">Affiliate</option>
+            <option value="AGENCY">Agency</option>
+            <option value="RESELLER">Reseller</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field__label" for="sim-amount">Net amount paid (৳)</label>
+          <input id="sim-amount" v-model="form.amount" class="admin-input num-mono" inputmode="decimal" :aria-invalid="Boolean(amountError)" aria-describedby="sim-amount-hint" />
+          <span v-if="amountError" class="field__error">{{ amountError }}</span>
+          <span v-else id="sim-amount-hint" class="field__hint">After discount, tax and referral credit (§9.3).</span>
+        </div>
+      </form>
+
+      <section class="admin-card" aria-live="polite" :aria-busy="loading">
         <div class="admin-card-header">
-          <h2 style="font-size: 0.9375rem; font-weight: 600; color: var(--admin-text-main);">Simulation Input Event</h2>
-          <span class="badge-tag badge-neutral">Test Scenario</span>
+          <h2 class="card-title">Result</h2>
+          <span v-if="loading" class="spinner" aria-hidden="true" style="color: var(--brand)" />
         </div>
-
-        <div style="display: flex; flex-direction: column; gap: 14px;">
-          <div>
-            <label style="font-size: 0.8125rem; font-weight: 600; color: var(--admin-text-main); display: block; margin-bottom: 4px;">
-              Target Product Tenant
-            </label>
-            <select v-model="form.product" class="admin-select">
-              <option value="healora">Healora (Healthcare SaaS)</option>
-              <option value="pulsepos">PulsePOS (Retail POS SaaS)</option>
-              <option value="all">Any Product (Global Wildcard)</option>
-            </select>
-          </div>
-
-          <div>
-            <label style="font-size: 0.8125rem; font-weight: 600; color: var(--admin-text-main); display: block; margin-bottom: 4px;">
-              Billing Trigger Reason
-            </label>
-            <select v-model="form.billingReason" class="admin-select">
-              <option value="initial">Initial Customer Signup Payment</option>
-              <option value="renewal">Subscription Renewal (Recurring)</option>
-              <option value="upgrade">Plan Upgrade / Tier Bump</option>
-            </select>
-          </div>
-
-          <div>
-            <label style="font-size: 0.8125rem; font-weight: 600; color: var(--admin-text-main); display: block; margin-bottom: 4px;">
-              Partner Classification
-            </label>
-            <select v-model="form.partnerType" class="admin-select">
-              <option value="CUSTOMER">Standard Customer (Default 10%)</option>
-              <option value="AFFILIATE">Certified Affiliate Partner (15%)</option>
-              <option value="AGENCY">Agency Partner (Special 20%)</option>
-            </select>
-          </div>
-
-          <div>
-            <label style="font-size: 0.8125rem; font-weight: 600; color: var(--admin-text-main); display: block; margin-bottom: 4px;">
-              Net Amount Paid (BDT)
-            </label>
-            <div style="position: relative;">
-              <span style="position: absolute; left: 12px; top: 9px; color: var(--admin-text-muted); font-weight: 600;">৳</span>
-              <input
-                type="number"
-                v-model.number="form.netAmount"
-                class="admin-input num-mono"
-                style="padding-left: 28px;"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Simulation Result Output Card -->
-      <div class="admin-card" style="border-left: 4px solid var(--admin-primary);">
-        <div class="admin-card-header">
-          <h2 style="font-size: 0.9375rem; font-weight: 600; color: var(--admin-text-main);">Rule Resolution Engine Output</h2>
-          <span class="badge-tag badge-success"><span class="badge-tag-dot" />Resolved Deterministically</span>
-        </div>
-
-        <div style="display: flex; flex-direction: column; gap: 14px;">
-          <!-- Matched Rule Box -->
-          <div style="padding: 12px 14px; background-color: var(--admin-subtle); border-radius: 8px; border: 1px solid var(--admin-border);">
-            <div style="font-size: 0.6875rem; font-weight: 600; color: var(--admin-text-muted); text-transform: uppercase;">
-              Winning Rule Definition
-            </div>
-            <div style="font-weight: 700; color: var(--admin-text-main); margin-top: 2px;">
-              {{ result.ruleName }}
-            </div>
-            <div style="font-size: 0.75rem; color: var(--admin-success); margin-top: 2px; font-weight: 500;">
-              Specificity Rank: #1 • Bitmask Score: {{ result.score }} • Ambiguity Ties: 0
-            </div>
-          </div>
-
-          <!-- Base & Rate Grid -->
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-            <div style="padding: 12px 14px; background-color: var(--admin-subtle); border-radius: 8px; border: 1px solid var(--admin-border);">
-              <div style="font-size: 0.6875rem; font-weight: 600; color: var(--admin-text-muted); text-transform: uppercase;">Calculation Base</div>
-              <div class="num-mono" style="font-size: 1.125rem; font-weight: 700; color: var(--admin-text-main); margin-top: 2px;">
-                ৳{{ form.netAmount.toLocaleString() }}.00
+        <StateBlock :loading="loading && !result" :error="error" :retry="simulate" :rows="3">
+          <template v-if="result">
+            <div class="winner">
+              <div class="kpi__label">Winning rule</div>
+              <div class="strong num-mono" style="font-size: var(--text-base); margin-top: 2px">{{ result.matched ? result.rule_name : 'No matching rule' }}</div>
+              <div class="xs muted" style="margin-top: 4px">
+                Specificity {{ result.specificity_score }} ({{ specificityParts }}). Higher scores win; ties are blocked when rules are saved (ADR 0022).
               </div>
             </div>
-
-            <div style="padding: 12px 14px; background-color: var(--admin-subtle); border-radius: 8px; border: 1px solid var(--admin-border);">
-              <div style="font-size: 0.6875rem; font-weight: 600; color: var(--admin-text-muted); text-transform: uppercase;">Effective Rate</div>
-              <div class="num-mono" style="font-size: 1.125rem; font-weight: 700; color: var(--admin-primary); margin-top: 2px;">
-                {{ result.ratePct }}% ({{ result.ratePct * 100 }} bps)
-              </div>
-            </div>
-          </div>
-
-          <!-- Total Commission Output -->
-          <div style="padding: 16px; background-color: var(--admin-primary-subtle); border: 1px solid var(--admin-primary-border); border-radius: 8px;">
-            <div style="font-size: 0.6875rem; font-weight: 600; color: var(--admin-primary); text-transform: uppercase;">
-              Calculated Commission (Invariant I3 Half-Up)
-            </div>
-            <div class="num-mono" style="font-size: 1.75rem; font-weight: 700; color: var(--admin-primary); margin: 4px 0;">
-              ৳{{ result.commissionAmount.toLocaleString() }}.00
-            </div>
-            <div style="font-size: 0.75rem; color: var(--admin-text-sub);">
-              Reward Allocation: <strong>{{ result.walletPct }}% Partner Wallet</strong> • <strong>{{ result.creditPct }}% Subscription Credit</strong>
-            </div>
-          </div>
-        </div>
-      </div>
+            <TransitionGroup tag="ol" name="step" class="calc-steps" style="margin-top: 14px">
+              <li v-for="(s, i) in steps" :key="s.label + resultKey" class="calc-step" :class="{ 'calc-step--total': s.total }" :style="{ transitionDelay: `${i * 70}ms` }">
+                <span>{{ s.label }}</span><span class="num-mono">{{ s.value }}</span>
+              </li>
+            </TransitionGroup>
+          </template>
+        </StateBlock>
+      </section>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { reactive, computed } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
+import StateBlock from '../components/StateBlock.vue';
+import { api, formatMoney, type SimulationResult } from '../api';
 
-const form = reactive({
-  product: 'healora',
-  billingReason: 'initial',
-  partnerType: 'CUSTOMER',
-  netAmount: 2000,
+const form = reactive({ product: 'healora', billingReason: 'initial', partnerType: 'CUSTOMER', amount: '2000' });
+const result = ref<SimulationResult | null>(null);
+const resultKey = ref(0);
+const error = ref<unknown>(null);
+const loading = ref(false);
+
+/** Parse major units to integer minor units without floats. */
+function toMinor(text: string): number | null {
+  const m = /^(\d{1,12})(?:\.(\d{0,2}))?$/.exec(text.trim().replace(/,/g, ''));
+  if (!m) return null;
+  return Number(m[1] + (m[2] ?? '').padEnd(2, '0'));
+}
+const amountMinor = computed(() => toMinor(form.amount));
+const amountError = computed(() => (amountMinor.value === null || amountMinor.value <= 0 ? 'Enter a positive amount with at most 2 decimals.' : ''));
+
+let timer: number | undefined;
+let seq = 0;
+async function simulate() {
+  if (amountMinor.value === null || amountMinor.value <= 0) return;
+  const mine = ++seq;
+  loading.value = true;
+  error.value = null;
+  try {
+    const res = await api.simulate({
+      product_slug: form.product,
+      plan_code: null,
+      partner_type: form.partnerType,
+      billing_reason: form.billingReason,
+      amount_net_paid: amountMinor.value,
+      currency: 'BDT',
+    });
+    if (mine !== seq) return; // a newer request is in flight
+    result.value = res;
+    resultKey.value++;
+  } catch (e) {
+    if (mine === seq) error.value = e;
+  } finally {
+    if (mine === seq) loading.value = false;
+  }
+}
+
+watch(form, () => {
+  window.clearTimeout(timer);
+  timer = window.setTimeout(simulate, 300);
+});
+onMounted(simulate);
+
+const BITS: [number, string][] = [[64, 'partner'], [32, 'campaign'], [16, 'partner type'], [8, 'plan'], [4, 'product'], [2, 'billing reason']];
+const specificityParts = computed(() => {
+  const s = result.value?.specificity_score ?? 0;
+  const parts = BITS.filter(([bit]) => (s & bit) !== 0).map(([, name]) => name);
+  return parts.length ? parts.join(' + ') : 'global default';
 });
 
-const result = computed(() => {
-  let rate = 10;
-  let score = 32;
-
-  if (form.partnerType === 'AGENCY') {
-    rate = 20;
-    score = 96;
-  } else if (form.partnerType === 'AFFILIATE') {
-    rate = 15;
-    score = 64;
-  }
-
-  if (form.billingReason === 'renewal') {
-    rate = 5;
-    score += 8;
-  }
-
-  const comm = (form.netAmount * rate) / 100;
-  return {
-    ruleName: `${form.product.toUpperCase()}_${form.partnerType}_${form.billingReason.toUpperCase()}_RULE_V2`,
-    score: score,
-    ratePct: rate,
-    commissionAmount: comm,
-    walletPct: 100,
-    creditPct: 0,
-  };
+const steps = computed(() => {
+  const r = result.value;
+  const base = amountMinor.value ?? 0;
+  if (!r) return [];
+  const split = Object.entries(r.reward_split ?? { WALLET: 100 }).map(([k, v]) => `${v}% ${k.toLowerCase().replace('_', '-')}`).join(', ');
+  return [
+    { label: 'Base (net paid)', value: formatMoney(base) },
+    { label: 'Rate', value: `${r.rate_bps / 100}% (${r.rate_bps} bps)` },
+    ...(r.max_commission_minor ? [{ label: 'Cap', value: formatMoney(r.max_commission_minor) }] : []),
+    { label: 'Reward split', value: split },
+    { label: 'Commission (rounded half-up once)', value: formatMoney(r.commission_amount_minor), total: true },
+  ];
 });
 </script>
+
+<style scoped>
+.winner { padding: 12px 14px; border-radius: var(--radius-md); background: var(--bg-subtle); border: 1px solid var(--border-subtle); }
+</style>

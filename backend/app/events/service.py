@@ -17,11 +17,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.catalog import service as catalog_service
+from app.commissions import service as commission_service
 from app.core import clock
 from app.core.config import Settings, get_settings
 from app.core.errors import ErrorCode, PlatformError
 from app.core.ids import uuid7
+from app.credits import service as credit_service
 from app.events.models import InboundEvent, OutboxMessage
+from app.risk import service as risk_service
 from app.subscriptions import service as subscription_service
 
 # Load compiled event schemas
@@ -239,7 +242,7 @@ async def ingest_event(
     session.add(outbox_msg)
     await session.flush()
 
-    # 8. Process derived facts immediately / synchronously in monolith
+    # 8. Process derived facts and business reactions in modular monolith (§3, §8)
     if event_type.startswith("subscription."):
         await subscription_service.process_subscription_event(
             session, product_id=product_id, event_type=event_type, data=data
@@ -248,10 +251,96 @@ async def ingest_event(
         await subscription_service.record_payment_fact(
             session, product_id=product_id, data=data
         )
+        # Capture credit reservation if applied
+        res_id = data.get("credit_reservation_id")
+        if res_id:
+            try:
+                res_uuid = uuid.UUID(str(res_id))
+                credit_applied = int(data.get("credit_applied_amount", 0))
+                await credit_service.capture_reservation(
+                    session,
+                    reservation_id=res_uuid,
+                    captured_minor=credit_applied if credit_applied > 0 else None,
+                    payment_id=data.get("payment_id"),
+                )
+            except Exception:
+                pass  # Do not block payment recording on non-fatal reservation mismatch
+
+        # Calculate and post commission
+        paid_at_dt = None
+        if data.get("paid_at"):
+            try:
+                val = data["paid_at"]
+                paid_at_dt = datetime.fromisoformat(val.replace("Z", "+00:00")) if isinstance(val, str) else val
+            except Exception:
+                paid_at_dt = clock.now()
+
+        await commission_service.process_payment_commission(
+            session,
+            product_id=product_id,
+            payment_id=data["payment_id"],
+            external_user_id=data["external_user_id"],
+            amount_net_paid=int(data["amount_net_paid"]),
+            plan_code=data.get("plan_code"),
+            billing_reason=data.get("billing_reason", "initial"),
+            paid_at=paid_at_dt or clock.now(),
+            currency=data.get("currency", "BDT"),
+        )
     elif event_type == "payment.refunded":
         await subscription_service.record_refund_fact(
             session, product_id=product_id, data=data
         )
+        await commission_service.process_refund_reversal(
+            session,
+            product_id=product_id,
+            payment_id=data["payment_id"],
+            refund_id=data["refund_id"],
+            amount_refunded=int(data["amount_refunded"]),
+            currency=data.get("currency", "BDT"),
+        )
+    elif event_type == "payment.chargeback":
+        cb_amount = int(data.get("amount", 0))
+        cb_payment_id = data.get("payment_id", "")
+        cb_currency = data.get("currency", "BDT")
+        cb_refund_id = f"cb_{cb_payment_id}_{int(clock.now().timestamp())}"
+        await subscription_service.record_refund_fact(
+            session,
+            product_id=product_id,
+            data={
+                "refund_id": cb_refund_id,
+                "payment_id": cb_payment_id,
+                "amount_refunded": cb_amount,
+                "currency": cb_currency,
+                "refunded_at": clock.now(),
+            },
+        )
+        await commission_service.process_refund_reversal(
+            session,
+            product_id=product_id,
+            payment_id=cb_payment_id,
+            refund_id=cb_refund_id,
+            amount_refunded=cb_amount,
+            currency=cb_currency,
+        )
+    elif event_type == "payment.failed":
+        res_id = data.get("credit_reservation_id")
+        if res_id:
+            try:
+                res_uuid = uuid.UUID(str(res_id))
+                await credit_service.release_reservation(session, reservation_id=res_uuid)
+            except Exception:
+                pass
+    elif event_type == "user.registered":
+        signals = data.get("signals")
+        if signals and isinstance(signals, dict):
+            try:
+                await risk_service.record_signals(
+                    session,
+                    source_event_id=inbound.id,
+                    signals=signals,
+                )
+            except Exception:
+                pass
 
     inbound.status = "PROCESSED"
     inbound.processed_at = clock.now()
@@ -281,4 +370,85 @@ async def record_outbox_message(
     session.add(outbox_msg)
     await session.flush()
     return outbox_msg
+
+
+async def list_inbound_events(
+    session: AsyncSession,
+    *,
+    product_id: uuid.UUID | None = None,
+    status: str | None = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> list[InboundEvent]:
+    """Lists inbound events with optional filters (§17.1)."""
+    stmt = select(InboundEvent).order_by(InboundEvent.occurred_at.desc())
+    if product_id:
+        stmt = stmt.where(InboundEvent.product_id == product_id)
+    if status:
+        stmt = stmt.where(InboundEvent.status == status)
+    stmt = stmt.limit(limit).offset(offset)
+    res = await session.execute(stmt)
+    return list(res.scalars().all())
+
+
+async def replay_inbound_event(
+    session: AsyncSession,
+    *,
+    event_id: uuid.UUID,
+    settings: Settings | None = None,
+) -> InboundEvent:
+    """Replays an existing inbound event idempotently (§8.4, §17.1)."""
+    stmt = select(InboundEvent).where(InboundEvent.id == event_id)
+    res = await session.execute(stmt)
+    event_record = res.scalar_one_or_none()
+    if not event_record:
+        raise PlatformError(ErrorCode.NOT_FOUND, f"Inbound event not found: {event_id}")
+
+    event_type = event_record.event_type
+    data = event_record.raw_payload.get("data", {})
+    product_id = event_record.product_id
+
+    if event_type.startswith("subscription."):
+        await subscription_service.process_subscription_event(
+            session, product_id=product_id, event_type=event_type, data=data
+        )
+    elif event_type == "payment.succeeded":
+        await subscription_service.record_payment_fact(
+            session, product_id=product_id, data=data
+        )
+        paid_at_dt = None
+        if data.get("paid_at"):
+            try:
+                val = data["paid_at"]
+                paid_at_dt = datetime.fromisoformat(val.replace("Z", "+00:00")) if isinstance(val, str) else val
+            except Exception:
+                paid_at_dt = clock.now()
+        await commission_service.process_payment_commission(
+            session,
+            product_id=product_id,
+            payment_id=data["payment_id"],
+            external_user_id=data["external_user_id"],
+            amount_net_paid=int(data["amount_net_paid"]),
+            plan_code=data.get("plan_code"),
+            billing_reason=data.get("billing_reason", "initial"),
+            paid_at=paid_at_dt or clock.now(),
+            currency=data.get("currency", "BDT"),
+        )
+    elif event_type == "payment.refunded":
+        await subscription_service.record_refund_fact(
+            session, product_id=product_id, data=data
+        )
+        await commission_service.process_refund_reversal(
+            session,
+            product_id=product_id,
+            payment_id=data["payment_id"],
+            refund_id=data["refund_id"],
+            amount_refunded=int(data["amount_refunded"]),
+            currency=data.get("currency", "BDT"),
+        )
+
+    event_record.status = "PROCESSED"
+    event_record.processed_at = clock.now()
+    await session.flush()
+    return event_record
 

@@ -77,3 +77,54 @@ class EventEnvelope(BaseModel):
     schema_version: int = 1
     occurred_at: str
     data: dict[str, Any]
+
+
+class TicketCreateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    title: str = Field(min_length=3, max_length=255)
+    category: str = Field(min_length=2, max_length=64)
+    severity: str = Field(default="MEDIUM", pattern=r"^(CRITICAL|HIGH|MEDIUM|LOW)$")
+    description: str = Field(min_length=5)
+    external_user_id: str | None = None
+    system_diagnostics: dict[str, Any] = Field(default_factory=dict)
+
+
+class TicketMessageRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    body: str = Field(min_length=1)
+    sender_name: str | None = None
+
+
+class TicketResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    id: str
+    ticket_number: str
+    product_id: str
+    external_user_id: str | None = None
+    category: str
+    severity: str
+    status: str
+    title: str
+    description: str
+    system_diagnostics: dict[str, Any] = Field(default_factory=dict)
+    assigned_agent_id: str | None = None
+    resolution_summary: str | None = None
+    sla_due_at: str | None = None
+    created_at: str
+    updated_at: str
+    messages: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class TicketMessageResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    id: str
+    ticket_id: str
+    sender_type: str
+    sender_name: str
+    body: str
+    created_at: str
+

@@ -52,6 +52,18 @@ def drop_insert_only_sql(table: str) -> list[str]:
     ]
 
 
+def attach_forbid_mutation_trigger(op_obj: object, table: str) -> None:
+    """Executes SQL statements in migration to make `table` insert-only (I2, ADR 0006)."""
+    for stmt in insert_only_sql(table):
+        getattr(op_obj, "execute")(stmt)
+
+
+def detach_forbid_mutation_trigger(op_obj: object, table: str) -> None:
+    """Executes SQL statements in migration downgrade to remove insert-only triggers."""
+    for stmt in drop_insert_only_sql(table):
+        getattr(op_obj, "execute")(stmt)
+
+
 # Tables that must be insert-only (ADR 0006). Phase migrations add them; a test checks that
 # every table listed here that exists in the database carries both triggers.
 INSERT_ONLY_TABLES: Final = (

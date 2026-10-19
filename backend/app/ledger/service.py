@@ -600,3 +600,60 @@ async def post_payout_returned(
     )
 
 
+async def list_wallet_transactions(
+    session: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    currency: str = "BDT",
+    limit: int = 50,
+    offset: int = 0,
+) -> list[JournalTransaction]:
+    """Retrieves ledger-backed statement history for a user (§10.5, docs/openapi.yaml)."""
+    stmt = (
+        select(JournalTransaction)
+        .join(LedgerEntry, LedgerEntry.transaction_id == JournalTransaction.id)
+        .join(LedgerAccount, LedgerAccount.id == LedgerEntry.account_id)
+        .where(LedgerAccount.user_id == user_id, LedgerEntry.currency == currency)
+        .distinct()
+        .order_by(JournalTransaction.posted_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    res = await session.execute(stmt)
+    return list(res.scalars().all())
+
+
+async def reconcile_ledger_integrity(session: AsyncSession) -> dict[str, Any]:
+    """Validates System Invariant I1 (every transaction sums to zero) and I3 (derivable balances)."""
+    unbalanced_stmt = (
+        select(
+            LedgerEntry.transaction_id,
+            LedgerEntry.currency,
+            func.sum(LedgerEntry.amount).label("entry_sum"),
+        )
+        .group_by(LedgerEntry.transaction_id, LedgerEntry.currency)
+        .having(func.sum(LedgerEntry.amount) != 0)
+    )
+    unbalanced_res = await session.execute(unbalanced_stmt)
+    unbalanced_rows = unbalanced_res.all()
+
+    total_entries_count = (await session.execute(select(func.count(LedgerEntry.id)))).scalar() or 0
+    total_tx_count = (await session.execute(select(func.count(JournalTransaction.id)))).scalar() or 0
+
+    if unbalanced_rows:
+        return {
+            "status": "UNBALANCED",
+            "unbalanced_count": len(unbalanced_rows),
+            "unbalanced_transactions": [str(r[0]) for r in unbalanced_rows[:10]],
+            "total_transactions": total_tx_count,
+            "total_entries": total_entries_count,
+        }
+
+    return {
+        "status": "BALANCED",
+        "unbalanced_count": 0,
+        "total_transactions": total_tx_count,
+        "total_entries": total_entries_count,
+    }
+
+

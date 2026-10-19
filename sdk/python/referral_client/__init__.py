@@ -28,6 +28,10 @@ from referral_client.models import (
     CreditReservationRequest,
     CreditReservationResponse,
     Signals,
+    TicketCreateRequest,
+    TicketMessageRequest,
+    TicketMessageResponse,
+    TicketResponse,
 )
 from referral_client.webhook import compute_signature, verify_signature
 
@@ -47,6 +51,10 @@ __all__ = [
     "CreditBalanceResponse",
     "CreditReservationRequest",
     "CreditReservationResponse",
+    "TicketCreateRequest",
+    "TicketMessageRequest",
+    "TicketResponse",
+    "TicketMessageResponse",
     "ReferralSDKError",
     "AuthenticationError",
     "PermissionDeniedError",

@@ -250,6 +250,41 @@ async def release_reservation(
     return reservation
 
 
+async def expire_reservation(
+    session: AsyncSession,
+    *,
+    reservation_id: uuid.UUID,
+) -> CreditReservation:
+    """Expires an uncaptured reservation and returns funds back to user wallet (§11.5)."""
+    stmt = (
+        select(CreditReservation)
+        .where(CreditReservation.id == reservation_id)
+        .with_for_update()
+    )
+    res = await session.execute(stmt)
+    reservation = res.scalar_one_or_none()
+    if not reservation:
+        raise PlatformError(
+            ErrorCode.NOT_FOUND,
+            f"Credit reservation not found: {reservation_id}",
+        )
+
+    if reservation.state != "RESERVED":
+        return reservation
+
+    await ledger_service.post_credit_released(
+        session,
+        reservation_id=reservation.id,
+        user_id=reservation.user_id,
+        release_credit_only_minor=reservation.from_credit_only_minor,
+        release_available_minor=reservation.from_available_minor,
+        currency=reservation.currency,
+    )
+    reservation.state = "EXPIRED"
+    await session.flush()
+    return reservation
+
+
 async def refund_credit(
     session: AsyncSession,
     *,
@@ -316,6 +351,13 @@ async def refund_credit(
     refund.journal_transaction_id = tx.id
     await session.flush()
     return refund, True
+
+
+async def get_reservation(session: AsyncSession, reservation_id: uuid.UUID) -> CreditReservation | None:
+    """Lookup a credit reservation by ID."""
+    stmt = select(CreditReservation).where(CreditReservation.id == reservation_id)
+    res = await session.execute(stmt)
+    return res.scalar_one_or_none()
 
 
 async def expire_stale_reservations(session: AsyncSession) -> int:

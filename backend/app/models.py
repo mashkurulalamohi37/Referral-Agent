@@ -21,6 +21,7 @@ DOMAIN_MODULES = (
     "notifications",
     "reporting",
     "admin",
+    "tickets",
 )
 
 

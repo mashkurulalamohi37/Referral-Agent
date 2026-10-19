@@ -134,3 +134,77 @@ async def create_rule_endpoint(
             "status": rule.status,
         },
     }
+
+
+class SimulateRuleRequest(BaseModel):
+    product_slug: str | None = None
+    plan_code: str | None = None
+    partner_type: str | None = None
+    billing_reason: str = "initial"
+    amount_net_paid: int = Field(gt=0, description="Amount net paid in minor units (poisha)")
+    currency: str = "BDT"
+
+
+@router.post(
+    "/v1/admin/commission-rules/simulate",
+    response_model=dict[str, Any],
+    summary="Admin: Simulate rule resolution and commission calculation (§17.1)",
+)
+async def simulate_commission_rule(
+    payload: SimulateRuleRequest,
+    admin_user: Annotated[User, Depends(require_roles("SUPER_ADMIN", "ADMIN"))],
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> dict[str, Any]:
+    from app.catalog import service as catalog_service
+    product_id = None
+    if payload.product_slug:
+        product = await catalog_service.get_product_by_slug(session, payload.product_slug)
+        if product:
+            product_id = product.id
+
+    rule = await commission_service.resolve_commission_rule(
+        session,
+        product_id=product_id,
+        plan_code=payload.plan_code,
+        partner_type=payload.partner_type,
+        billing_reason=payload.billing_reason,
+        currency=payload.currency,
+        paid_at=clock.now(),
+    )
+
+    if not rule:
+        return {
+            "success": True,
+            "data": {
+                "matched": False,
+                "rule_name": "GLOBAL_DEFAULT_OR_NONE",
+                "commission_amount_minor": 0,
+                "rate_bps": 0,
+                "specificity_score": 0,
+                "reward_split": {"WALLET": 100},
+            },
+        }
+
+    score = commission_service.calculate_rule_specificity_score(
+        rule,
+        has_partner_type_match=bool(payload.partner_type and rule.partner_type == payload.partner_type),
+        has_plan_match=bool(payload.plan_code and rule.plan_code == payload.plan_code),
+        has_billing_match=bool(rule.billing_reason and rule.billing_reason == payload.billing_reason),
+        has_product_match=bool(product_id and rule.product_id == product_id),
+    )
+    comm_amount = commission_service.calculate_commission_amount(payload.amount_net_paid, rule)
+
+    return {
+        "success": True,
+        "data": {
+            "matched": True,
+            "rule_id": str(rule.id),
+            "rule_name": rule.rule_name,
+            "commission_type": rule.commission_type,
+            "rate_bps": rule.rate_bps,
+            "specificity_score": score,
+            "commission_amount_minor": comm_amount,
+            "reward_split": rule.reward_split,
+            "confirmation_days": rule.confirmation_days,
+        },
+    }

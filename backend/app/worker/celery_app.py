@@ -34,6 +34,10 @@ celery_app.conf.update(
     task_default_queue="default",
     beat_schedule={
         "heartbeat": {"task": "system.heartbeat", "schedule": 60.0},
+        "confirm-matured-commissions": {"task": "commissions.confirm_matured", "schedule": 900.0},
+        "expire-credit-reservations": {"task": "credits.expire_reservations", "schedule": 60.0},
+        "dispatch-pending-outbox": {"task": "outbox.dispatch_pending", "schedule": 10.0},
+        "nightly-ledger-reconciliation": {"task": "reporting.nightly_reconciliation", "schedule": 86400.0},
     },
 )
 

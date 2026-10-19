@@ -28,6 +28,8 @@ from referral_client.models import (
     CreditReservationRequest,
     CreditReservationResponse,
     Signals,
+    TicketMessageResponse,
+    TicketResponse,
 )
 from referral_client.webhook import compute_signature
 
@@ -239,3 +241,64 @@ class ReferralClient:
         }
         resp = await self._request_with_retry("POST", "/v1/credits/refunds", data=json.dumps(body).encode("utf-8"))
         return resp.json()
+
+    async def submit_ticket(
+        self,
+        *,
+        product_slug: str,
+        title: str,
+        category: str,
+        description: str,
+        severity: str = "MEDIUM",
+        external_user_id: str | None = None,
+        system_diagnostics: dict[str, Any] | None = None,
+    ) -> TicketResponse:
+        """Submits a system issue or bug ticket from a connected product (§21, ADR 0016)."""
+        body = {
+            "title": title,
+            "category": category,
+            "severity": severity,
+            "description": description,
+            "external_user_id": external_user_id,
+            "system_diagnostics": system_diagnostics or {},
+        }
+        resp = await self._request_with_retry(
+            "POST",
+            f"/v1/products/{product_slug}/tickets",
+            data=json.dumps(body).encode("utf-8"),
+        )
+        return TicketResponse(**resp.json()["data"])
+
+    async def get_ticket(
+        self,
+        *,
+        product_slug: str,
+        ticket_number: str,
+    ) -> TicketResponse:
+        """Retrieves status and conversation of an existing ticket."""
+        resp = await self._request_with_retry(
+            "GET",
+            f"/v1/products/{product_slug}/tickets/{ticket_number}",
+        )
+        return TicketResponse(**resp.json()["data"])
+
+    async def add_ticket_message(
+        self,
+        *,
+        product_slug: str,
+        ticket_number: str,
+        body: str,
+        sender_name: str | None = None,
+    ) -> TicketMessageResponse:
+        """Appends a follow-up message or diagnostic update to an existing ticket."""
+        data = {
+            "body": body,
+            "sender_name": sender_name,
+        }
+        resp = await self._request_with_retry(
+            "POST",
+            f"/v1/products/{product_slug}/tickets/{ticket_number}/messages",
+            data=json.dumps(data).encode("utf-8"),
+        )
+        return TicketMessageResponse(**resp.json()["data"])
+

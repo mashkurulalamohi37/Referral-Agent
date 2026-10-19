@@ -7,19 +7,24 @@ import RuleSimulator from './views/RuleSimulator.vue';
 import EventsConsole from './views/EventsConsole.vue';
 import PayoutsReview from './views/PayoutsReview.vue';
 import AuditLog from './views/AuditLog.vue';
+import SupportDesk from './views/SupportDesk.vue';
+import { applyPrefs } from './composables/ui';
 import './style.css';
 
+applyPrefs();
+
 const routes = [
-  { path: '/', component: Dashboard },
-  { path: '/simulator', component: RuleSimulator },
-  { path: '/events', component: EventsConsole },
-  { path: '/payouts', component: PayoutsReview },
-  { path: '/audit', component: AuditLog },
+  { path: '/', component: Dashboard, meta: { title: 'Dashboard' } },
+  { path: '/payouts', component: PayoutsReview, meta: { title: 'Payout reviews' } },
+  { path: '/events', component: EventsConsole, meta: { title: 'Inbound events' } },
+  { path: '/support', component: SupportDesk, meta: { title: 'Support desk' } },
+  { path: '/simulator', component: RuleSimulator, meta: { title: 'Rule simulator' } },
+  { path: '/audit', component: AuditLog, meta: { title: 'Audit log' } },
 ];
 
-const router = createRouter({
-  history: createWebHistory(),
-  routes,
+const router = createRouter({ history: createWebHistory(), routes });
+router.afterEach((to) => {
+  document.title = `${String(to.meta.title ?? 'Admin')} · Operations Console`;
 });
 
 const app = createApp(App);
