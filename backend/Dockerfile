@@ -20,14 +20,14 @@ COPY --from=uv /uv /usr/local/bin/uv
 
 # ---------------------------------------------------------------- dependencies (prod only)
 FROM base AS deps
-COPY pyproject.toml uv.lock ./
+COPY pyproject.toml uv.lock* ./
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev --no-install-project
+    uv sync --no-dev --no-install-project
 
 # ---------------------------------------------------------------- dev: + test/lint tools, source mounted
 FROM deps AS dev
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-install-project
+    uv sync --no-install-project
 COPY . .
 USER app
 CMD ["uvicorn", "app.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000", "--reload"]
