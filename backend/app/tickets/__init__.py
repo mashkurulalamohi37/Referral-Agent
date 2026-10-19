@@ -1,7 +1,4 @@
-"""Tickets domain module (§3, ADR 0016)."""
+"""Tickets domain module (§3, ADR 0016).
 
-from __future__ import annotations
-
-from app.tickets import service
-
-__all__ = ["service"]
+Module boundary: other modules may import only `app.tickets.service`.
+"""
