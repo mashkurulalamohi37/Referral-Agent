@@ -105,7 +105,8 @@ services:
 
   portal:
     build:
-      context: ./frontend/portal
+      context: ./frontend
+      dockerfile: portal/Dockerfile
     ports:
       - "${PORTAL_PORT:-3015}:80"
     restart: unless-stopped
@@ -115,7 +116,8 @@ services:
 
   admin:
     build:
-      context: ./frontend/admin
+      context: ./frontend
+      dockerfile: admin/Dockerfile
     ports:
       - "${ADMIN_PORT:-3016}:80"
     restart: unless-stopped
