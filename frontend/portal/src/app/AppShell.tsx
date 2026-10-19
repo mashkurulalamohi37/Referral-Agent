@@ -281,10 +281,10 @@ export function AppShell() {
       <a className="skip-link" href="#main">
         {t('app.skipToContent')}
       </a>
-      <DemoBanner />
       <div className="shell">
         <Sidebar />
         <div className="main-col">
+          <DemoBanner />
           <header className="topbar">
             <div className="topbar__brand-mobile">
               <BrandMark compact />

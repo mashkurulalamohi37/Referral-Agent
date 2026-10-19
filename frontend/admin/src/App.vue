@@ -1,9 +1,5 @@
 <template>
   <a class="skip-link" href="#main">Skip to content</a>
-  <div v-if="demo" class="demo-strip" role="status">
-    Demo mode: sample data, actions are not sent to the platform.
-    <button class="admin-btn admin-btn-secondary admin-btn-sm" @click="leaveDemo">Exit demo</button>
-  </div>
   <div class="layout" :data-collapsed="prefs.collapsed">
     <aside class="side" aria-label="Admin navigation">
       <div class="side__brand">
@@ -36,7 +32,11 @@
       </button>
     </aside>
 
-    <div style="display: flex; flex-direction: column; min-width: 0">
+    <div class="layout__main">
+      <div v-if="demo" class="demo-strip" role="status">
+        Demo mode: sample data, actions are not sent to the platform.
+        <button class="admin-btn admin-btn-secondary admin-btn-sm" @click="leaveDemo">Exit demo</button>
+      </div>
       <header class="top">
         <div class="top__left">
           <button class="palette-trigger" aria-label="Open command palette (Ctrl+K)" @click="palette?.show()">
