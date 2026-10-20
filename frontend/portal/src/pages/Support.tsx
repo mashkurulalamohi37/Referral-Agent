@@ -2,17 +2,12 @@ import { useEffect, useState, useRef, type ChangeEvent, type FormEvent } from 'r
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
-  Activity,
   ArrowLeft,
-  BookOpen,
   ChevronRight,
   Download,
   Eye,
-  FolderGit2,
   LifeBuoy,
   Maximize2,
-  Megaphone,
-  MessageSquarePlus,
   Paperclip,
   Plus,
   Send,
@@ -74,7 +69,6 @@ export function Support() {
 
   const ticketList = tickets ?? [];
   const ticketCount = ticketList.length;
-  const recentTickets = ticketList.slice(0, 5);
 
   const activeTicket = selectedTicketId
     ? ticketList.find((tkt) => tkt.ticket_number === selectedTicketId)
@@ -203,147 +197,9 @@ export function Support() {
 
   return (
     <Page title={t('support.title')} subtitle={t('support.subtitle')}>
-      <div className="support-layout">
-        {/* ========================================================== LEFT COLUMN */}
-        <aside>
-          <div className="support-sidebar-card">
-            {/* Recent Tickets Section */}
-            <h2 className="support-sidebar-header">{t('support.recentTickets')}</h2>
-            <div className="support-ticket-list">
-              {recentTickets.length > 0 ? (
-                recentTickets.map((tkt) => {
-                  const isSelected = selectedTicketId === tkt.ticket_number && nav === 'my_tickets';
-                  return (
-                    <button
-                      key={tkt.id}
-                      type="button"
-                      className={`support-ticket-item ${isSelected ? 'active' : ''}`}
-                      onClick={() => {
-                        setSelectedTicketId(tkt.ticket_number);
-                        setNav('my_tickets');
-                      }}
-                      title={`${tkt.ticket_number} - ${tkt.title}`}
-                    >
-                      <strong style={{ color: isSelected ? '#38bdf8' : '#e2e8f0', marginRight: 4 }}>
-                        #{tkt.ticket_number}
-                      </strong>
-                      <span> - {tkt.title}</span>
-                    </button>
-                  );
-                })
-              ) : (
-                <div style={{ padding: '8px 10px', fontSize: '0.8125rem', color: '#64748b' }}>
-                  {t('support.noTickets')}
-                </div>
-              )}
-            </div>
-
-            {/* Help & Support Navigation Options (All together under Support) */}
-            <h2 className="support-sidebar-header" style={{ marginTop: 10 }}>{t('support.title')}</h2>
-            <nav className="support-nav-list" aria-label="Support Navigation">
-              <button
-                type="button"
-                className={`support-nav-item ${nav === 'my_tickets' && !selectedTicketId ? 'active' : ''}`}
-                onClick={() => {
-                  setNav('my_tickets');
-                  setSelectedTicketId(null);
-                }}
-              >
-                <div className="row" style={{ gap: 10, alignItems: 'center' }}>
-                  <FolderGit2 size={16} />
-                  <span>{t('support.mySupportTickets')}</span>
-                </div>
-                {ticketCount > 0 && (
-                  <span
-                    style={{
-                      background: '#1e293b',
-                      color: '#94a3b8',
-                      fontSize: '0.75rem',
-                      fontWeight: 600,
-                      padding: '2px 8px',
-                      borderRadius: 12,
-                    }}
-                  >
-                    {ticketCount}
-                  </span>
-                )}
-              </button>
-
-              <button
-                type="button"
-                className={`support-nav-item ${nav === 'announcements' ? 'active' : ''}`}
-                onClick={() => setNav('announcements')}
-              >
-                <div className="row" style={{ gap: 10, alignItems: 'center' }}>
-                  <Megaphone size={16} />
-                  <span>{t('support.announcements')}</span>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                className={`support-nav-item ${nav === 'knowledgebase' ? 'active' : ''}`}
-                onClick={() => setNav('knowledgebase')}
-              >
-                <div className="row" style={{ gap: 10, alignItems: 'center' }}>
-                  <BookOpen size={16} />
-                  <span>{t('support.knowledgebase')}</span>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                className={`support-nav-item ${nav === 'downloads' ? 'active' : ''}`}
-                onClick={() => setNav('downloads')}
-              >
-                <div className="row" style={{ gap: 10, alignItems: 'center' }}>
-                  <Download size={16} />
-                  <span>{t('support.downloads')}</span>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                className={`support-nav-item ${nav === 'network' ? 'active' : ''}`}
-                onClick={() => setNav('network')}
-              >
-                <div className="row" style={{ gap: 10, alignItems: 'center' }}>
-                  <Activity size={16} />
-                  <span>{t('support.networkStatus')}</span>
-                </div>
-                <span
-                  style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: '50%',
-                    background: '#10b981',
-                    boxShadow: '0 0 8px #10b981',
-                  }}
-                  title="Operational"
-                />
-              </button>
-
-              <button
-                type="button"
-                className={`support-nav-item ${nav === 'open' ? 'active' : ''}`}
-                onClick={() => {
-                  setNav('open');
-                  setSelectedTicketId(null);
-                }}
-              >
-                <div className="row" style={{ gap: 10, alignItems: 'center' }}>
-                  <MessageSquarePlus size={16} />
-                  <span>{t('support.openTicket')}</span>
-                </div>
-              </button>
-            </nav>
-          </div>
-        </aside>
-
-        {/* ========================================================== RIGHT MAIN PANEL */}
-        <main style={{ minWidth: 0 }}>
-          {/* TAB 1: OPEN TICKET FORM (MATCHES SCREENSHOT 2) */}
-          {nav === 'open' && (
+      <div style={{ maxWidth: 960, margin: '0 auto', width: '100%' }}>
+        {/* TAB 1: OPEN TICKET FORM (MATCHES SCREENSHOT 2) */}
+        {nav === 'open' && (
             <div className="support-main-card">
               <div
                 style={{
@@ -1234,7 +1090,6 @@ export function Support() {
               </div>
             </div>
           )}
-        </main>
       </div>
     </Page>
   );
