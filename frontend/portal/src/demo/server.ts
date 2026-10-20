@@ -15,6 +15,8 @@ import type {
   ProductTheme,
   ReferralCode,
   ReferralsPage,
+  SupportTicket,
+  TicketMessage,
   WalletBalances,
   WalletTransaction,
 } from '../lib/types';
@@ -96,6 +98,76 @@ const state = {
     { id: 't3', transaction_type: 'PAYOUT_PAID', reference_type: 'PAYOUT', reference_id: 'po1', description: 'Withdrawal paid to bKash', posted_at: iso(-17) },
     { id: 't4', transaction_type: 'COMMISSION_REVERSED', reference_type: 'COMMISSION', reference_id: 'cm5', description: 'Commission reversed after a refund', posted_at: iso(-20) },
   ] as WalletTransaction[],
+  tickets: [
+    {
+      id: 'tkt-1',
+      ticket_number: 'TKT-PULSEPOS-0012',
+      product_slug: 'pulsepos',
+      title: 'POS Offline Transactions Failed to Sync',
+      category: 'SYNC_FAILURE',
+      severity: 'CRITICAL',
+      status: 'INVESTIGATING',
+      description: 'Transactions made in offline mode between 2 PM and 4 PM are stuck in queue and returning 504 Gateway Timeout.',
+      system_diagnostics: {
+        terminal_id: 'POS-TERM-88',
+        app_version: 'v3.2.0',
+        os: 'Android 13',
+      },
+      created_at: iso(-2),
+      messages: [
+        {
+          id: 'msg-1',
+          ticket_id: 'tkt-1',
+          sender_type: 'PARTNER_PORTAL_USER',
+          sender_name: 'Demo Partner',
+          body: 'Transactions made in offline mode between 2 PM and 4 PM are stuck in queue and returning 504 Gateway Timeout.',
+          created_at: iso(-2),
+        },
+        {
+          id: 'msg-2',
+          ticket_id: 'tkt-1',
+          sender_type: 'SUPPORT_ENGINEER',
+          sender_name: 'Triage Engineer',
+          body: 'We have identified a queue lock on cluster worker #3. A patch has been applied to retry failed batches.',
+          created_at: iso(-1),
+        },
+      ],
+    },
+    {
+      id: 'tkt-2',
+      ticket_number: 'TKT-HEALORA-0005',
+      product_slug: 'healora',
+      title: 'Video consultation connection drop',
+      category: 'CRASH',
+      severity: 'HIGH',
+      status: 'RESOLVED',
+      description: 'Video consultation room drops connection after exactly 10 minutes for Clinic Plus accounts.',
+      system_diagnostics: {
+        client: 'WebRTC v1.8',
+        browser: 'Chrome 128',
+      },
+      resolution_summary: 'WebRTC session token expiration extended from 600s to 3600s.',
+      created_at: iso(-10),
+      messages: [
+        {
+          id: 'msg-3',
+          ticket_id: 'tkt-2',
+          sender_type: 'PARTNER_PORTAL_USER',
+          sender_name: 'Demo Partner',
+          body: 'Video consultation room drops connection after exactly 10 minutes for Clinic Plus accounts.',
+          created_at: iso(-10),
+        },
+        {
+          id: 'msg-4',
+          ticket_id: 'tkt-2',
+          sender_type: 'SUPPORT_ENGINEER',
+          sender_name: 'Healora Platform Team',
+          body: 'Resolved in patch v2.4.1. WebRTC session timeout has been increased to 1 hour.',
+          created_at: iso(-8),
+        },
+      ],
+    },
+  ] as SupportTicket[],
 };
 
 const referrals: ReferralsPage = {
@@ -207,6 +279,56 @@ export async function demoFetch<T>(path: string, options: { method?: string; bod
     case route === 'POST /v1/me/kyc': {
       state.me.kyc_status = 'PENDING';
       return delay({ status: 'PENDING' } as T);
+    }
+    case route === 'GET /v1/me/tickets':
+      return delay(state.tickets as T);
+    case route === 'POST /v1/me/tickets': {
+      const pSlug = String(body.product_slug ?? 'pulsepos');
+      const count = state.tickets.length + 1;
+      const num = `TKT-${pSlug.toUpperCase()}-${String(count).padStart(4, '0')}`;
+      const newTicket: SupportTicket = {
+        id: `tkt-${count}`,
+        ticket_number: num,
+        product_slug: pSlug,
+        title: String(body.title ?? 'System Issue'),
+        category: String(body.category ?? 'OTHER'),
+        severity: (body.severity as any) || 'MEDIUM',
+        status: 'NEW',
+        description: String(body.description ?? ''),
+        system_diagnostics: (body.system_diagnostics as Record<string, unknown>) ?? {
+          source: 'partner_portal_demo',
+          browser: typeof navigator !== 'undefined' ? navigator.userAgent : 'Chrome/128',
+        },
+        created_at: new Date().toISOString(),
+        messages: [
+          {
+            id: `msg-${Date.now()}`,
+            ticket_id: `tkt-${count}`,
+            sender_type: 'PARTNER_PORTAL_USER',
+            sender_name: state.me.display_name ?? 'Demo Partner',
+            body: String(body.description ?? ''),
+            created_at: new Date().toISOString(),
+          },
+        ],
+      };
+      state.tickets.unshift(newTicket);
+      return delay(newTicket as T);
+    }
+    case /^POST \/v1\/me\/tickets\/[^/]+\/messages$/.test(route): {
+      const num = url.pathname.split('/')[4];
+      const t = state.tickets.find((x) => x.ticket_number === num);
+      if (!t) throw new DemoError(404, 'NOT_FOUND', `Ticket ${num} not found`);
+      const newMsg: TicketMessage = {
+        id: `msg-${Date.now()}`,
+        ticket_id: t.id,
+        sender_type: 'PARTNER_PORTAL_USER',
+        sender_name: state.me.display_name ?? 'Demo Partner',
+        body: String(body.body ?? ''),
+        created_at: new Date().toISOString(),
+      };
+      t.messages ??= [];
+      t.messages.push(newMsg);
+      return delay(newMsg as T);
     }
     case route === 'POST /v1/auth/logout':
       return delay({} as T);

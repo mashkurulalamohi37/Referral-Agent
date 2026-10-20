@@ -142,3 +142,30 @@ export interface AppNotification {
   read_at: string | null;
   created_at: string;
 }
+
+export interface TicketMessage {
+  id: string;
+  ticket_id: string;
+  sender_type: string;
+  sender_name?: string;
+  body: string;
+  created_at: string;
+  is_internal_note?: boolean;
+}
+
+export interface SupportTicket {
+  id: string;
+  ticket_number: string;
+  product_id?: string;
+  product_slug: string;
+  category: string;
+  severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+  status: 'NEW' | 'TRIAGED' | 'INVESTIGATING' | 'FIX_IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
+  title: string;
+  description: string;
+  system_diagnostics?: Record<string, unknown>;
+  resolution_summary?: string | null;
+  created_at: string;
+  messages?: TicketMessage[];
+}
+

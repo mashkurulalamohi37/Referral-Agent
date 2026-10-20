@@ -20,6 +20,17 @@ class ProductTicketCreate(BaseModel):
     system_diagnostics: dict[str, Any] = Field(default_factory=dict)
 
 
+class PortalTicketCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    product_slug: str = Field(min_length=2, max_length=64, pattern=r"^(pulsepos|healora)$")
+    title: str = Field(min_length=3, max_length=255)
+    category: str = Field(min_length=2, max_length=64)
+    severity: str = Field(default="MEDIUM", pattern=r"^(CRITICAL|HIGH|MEDIUM|LOW)$")
+    description: str = Field(min_length=5)
+    system_diagnostics: dict[str, Any] = Field(default_factory=dict)
+
+
 class ProductTicketMessageCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

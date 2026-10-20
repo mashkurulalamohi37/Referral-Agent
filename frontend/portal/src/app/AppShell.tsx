@@ -8,6 +8,7 @@ import {
   Bell,
   Home,
   Languages,
+  LifeBuoy,
   LogOut,
   Monitor,
   Moon,
@@ -33,6 +34,7 @@ const NAV: { to: string; key: string; icon: LucideIcon }[] = [
   { to: '/referrals', key: 'referrals', icon: Users },
   { to: '/earnings', key: 'earnings', icon: Wallet },
   { to: '/withdraw', key: 'withdraw', icon: ArrowDownToLine },
+  { to: '/support', key: 'support', icon: LifeBuoy },
   { to: '/account', key: 'account', icon: UserRound },
 ];
 

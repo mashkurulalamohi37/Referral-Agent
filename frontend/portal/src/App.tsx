@@ -12,6 +12,7 @@ import { Referrals } from './pages/Referrals';
 import { Earnings } from './pages/Earnings';
 import { Withdraw } from './pages/Withdraw';
 import { Account } from './pages/Account';
+import { Support } from './pages/Support';
 import { NotFound } from './pages/NotFound';
 
 export function createQueryClient() {
@@ -42,6 +43,7 @@ export function AppRoutes() {
         <Route path="referrals" element={<Referrals />} />
         <Route path="earnings" element={<Earnings />} />
         <Route path="withdraw" element={<Withdraw />} />
+        <Route path="support" element={<Support />} />
         <Route path="account" element={<Account />} />
         <Route path="*" element={<NotFound />} />
       </Route>

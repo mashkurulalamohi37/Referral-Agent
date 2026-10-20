@@ -20,6 +20,7 @@ from app.core.errors import ErrorCode, PlatformError
 from app.identity.models import User
 from app.tickets import service as tickets_service
 from app.tickets.schemas import (
+    PortalTicketCreate,
     ProductTicketCreate,
     ProductTicketMessageCreate,
     ProductTicketMessageOut,
@@ -130,6 +131,106 @@ async def reply_product_ticket(
         body=payload.body,
         sender_type="PRODUCT_CLIENT",
         sender_name=payload.sender_name or product.name,
+        is_internal_note=False,
+    )
+    return {
+        "success": True,
+        "data": ProductTicketMessageOut.model_validate(msg).model_dump(mode="json"),
+    }
+
+
+# ---------------------------------------------------------------- Portal User Support API
+
+
+@router.post(
+    "/v1/me/tickets",
+    status_code=status.HTTP_201_CREATED,
+    response_model=dict[str, Any],
+)
+async def submit_my_ticket(
+    payload: PortalTicketCreate,
+    user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> dict[str, Any]:
+    """Allows authenticated portal users/partners to submit support tickets for Healora or PulsePOS."""
+    data = ProductTicketCreate(
+        title=payload.title,
+        category=payload.category,
+        severity=payload.severity,
+        description=payload.description,
+        external_user_id=f"user_{user.id}",
+        system_diagnostics={
+            **payload.system_diagnostics,
+            "submitted_by_user_id": str(user.id),
+            "submitted_by_email": user.email,
+            "source": "partner_portal",
+        },
+    )
+    ticket = await tickets_service.create_product_ticket(
+        session,
+        product_slug=payload.product_slug,
+        data=data,
+        actor_id=user.id,
+    )
+    return {
+        "success": True,
+        "data": ProductTicketOut.model_validate(ticket).model_dump(mode="json"),
+    }
+
+
+@router.get("/v1/me/tickets", response_model=dict[str, Any])
+async def list_my_tickets(
+    user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> dict[str, Any]:
+    """Lists all support tickets submitted by or associated with the current portal user."""
+    tickets = await tickets_service.list_tickets_for_user(session, user_id=user.id)
+    return {
+        "success": True,
+        "data": [ProductTicketOut.model_validate(t).model_dump(mode="json") for t in tickets],
+    }
+
+
+@router.get("/v1/me/tickets/{ticket_number}", response_model=dict[str, Any])
+async def get_my_ticket(
+    ticket_number: str,
+    user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> dict[str, Any]:
+    """Retrieves a ticket's status and public conversation for the owning user."""
+    ticket = await tickets_service.get_ticket_by_number(session, ticket_number, include_internal_notes=False)
+    if not ticket or ticket.external_user_id != f"user_{user.id}":
+        raise PlatformError(ErrorCode.NOT_FOUND, f"Ticket '{ticket_number}' not found")
+
+    return {
+        "success": True,
+        "data": ProductTicketOut.model_validate(ticket).model_dump(mode="json"),
+    }
+
+
+@router.post(
+    "/v1/me/tickets/{ticket_number}/messages",
+    status_code=status.HTTP_201_CREATED,
+    response_model=dict[str, Any],
+)
+async def reply_my_ticket(
+    ticket_number: str,
+    payload: ProductTicketMessageCreate,
+    user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> dict[str, Any]:
+    """Allows portal users to reply or add more information to an existing ticket."""
+    ticket = await tickets_service.get_ticket_by_number(session, ticket_number, include_internal_notes=False)
+    if not ticket or ticket.external_user_id != f"user_{user.id}":
+        raise PlatformError(ErrorCode.NOT_FOUND, f"Ticket '{ticket_number}' not found")
+
+    msg = await tickets_service.add_ticket_message(
+        session,
+        ticket_id=ticket.id,
+        body=payload.body,
+        sender_type="PARTNER_PORTAL_USER",
+        sender_user_id=user.id,
+        sender_name=user.display_name or user.email or "Partner User",
         is_internal_note=False,
     )
     return {

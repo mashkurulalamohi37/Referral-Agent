@@ -13,6 +13,8 @@ import type {
   ProductTheme,
   ReferralCode,
   ReferralsPage,
+  SupportTicket,
+  TicketMessage,
   WalletBalances,
   WalletTransaction,
 } from './types';
@@ -29,6 +31,8 @@ export const keys = {
   payouts: ['payouts'] as const,
   methods: ['payout-methods'] as const,
   notifications: ['notifications'] as const,
+  tickets: ['tickets'] as const,
+  ticket: (num: string) => ['tickets', num] as const,
 };
 
 /** Don't retry errors that won't change on retry (auth, validation, missing endpoint). */
@@ -123,3 +127,40 @@ export function useRequestPayout() {
     },
   });
 }
+
+export function useMyTickets() {
+  return useQuery({
+    queryKey: keys.tickets,
+    queryFn: () => api<SupportTicket[]>('/v1/me/tickets'),
+  });
+}
+
+export function useCreateTicket() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: {
+      product_slug: string;
+      title: string;
+      category: string;
+      severity: string;
+      description: string;
+      system_diagnostics?: Record<string, unknown>;
+    }) => api<SupportTicket>('/v1/me/tickets', { method: 'POST', body }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: keys.tickets });
+    },
+  });
+}
+
+export function useReplyTicket(ticketNumber: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { body: string }) =>
+      api<TicketMessage>(`/v1/me/tickets/${ticketNumber}/messages`, { method: 'POST', body }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: keys.tickets });
+      void qc.invalidateQueries({ queryKey: keys.ticket(ticketNumber) });
+    },
+  });
+}
+

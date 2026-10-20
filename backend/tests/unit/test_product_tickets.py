@@ -250,3 +250,52 @@ async def test_ticket_triage_assignment_and_resolution(async_session: AsyncSessi
     assert ticket.status == "RESOLVED"
     assert ticket.resolved_at is not None
     assert "timeout to 60s" in ticket.resolution_summary
+
+
+@pytest.mark.asyncio
+async def test_portal_user_tickets_lifecycle(async_session: AsyncSession) -> None:
+    # 1. Setup product
+    await catalog_service.create_product(
+        async_session,
+        slug="pulsepos",
+        name="PulsePOS",
+        signup_url="https://pulsepos.example.com/signup",
+    )
+
+    portal_user_id = uuid.uuid4()
+    other_user_id = uuid.uuid4()
+
+    # 2. Portal user submits a ticket
+    ticket = await tickets_service.create_product_ticket(
+        async_session,
+        product_slug="pulsepos",
+        data=ProductTicketCreate(
+            title="Unable to download monthly report",
+            category="REPORTING",
+            severity="MEDIUM",
+            description="The PDF report generator is stuck on loading.",
+            external_user_id=f"user_{portal_user_id}",
+        ),
+        actor_id=portal_user_id,
+    )
+    assert ticket.ticket_number.startswith("TKT-PULSEPOS-")
+
+    # 3. List tickets for portal user
+    my_tickets = await tickets_service.list_tickets_for_user(async_session, user_id=portal_user_id)
+    assert len(my_tickets) == 1
+    assert my_tickets[0].id == ticket.id
+
+    other_tickets = await tickets_service.list_tickets_for_user(async_session, user_id=other_user_id)
+    assert len(other_tickets) == 0
+
+    # 4. Portal user adds message
+    msg = await tickets_service.add_ticket_message(
+        async_session,
+        ticket_id=ticket.id,
+        body="It happened again today at 11 AM.",
+        sender_type="PARTNER_PORTAL_USER",
+        sender_user_id=portal_user_id,
+        sender_name="Demo Partner",
+    )
+    assert msg.body == "It happened again today at 11 AM."
+

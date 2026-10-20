@@ -259,6 +259,33 @@ async def list_tickets(
     return list(result.scalars().all())
 
 
+async def list_tickets_for_user(
+    session: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    limit: int = 50,
+    offset: int = 0,
+) -> list[ProductTicket]:
+    """Lists tickets belonging to a specific portal user (excluding internal notes)."""
+    target_ext_id = f"user_{user_id}"
+    stmt = (
+        select(ProductTicket)
+        .options(
+            selectinload(ProductTicket.messages),
+            selectinload(ProductTicket.audit_logs),
+        )
+        .where(ProductTicket.external_user_id == target_ext_id)
+        .order_by(ProductTicket.created_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    result = await session.execute(stmt)
+    tickets = list(result.scalars().all())
+    for t in tickets:
+        t.messages = [m for m in t.messages if not m.is_internal_note]
+    return tickets
+
+
 async def add_ticket_message(
     session: AsyncSession,
     *,
