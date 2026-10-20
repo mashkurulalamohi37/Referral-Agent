@@ -189,9 +189,9 @@ export function Support() {
     <Page title={t('support.title')} subtitle={t('support.subtitle')}>
       <div className="support-layout">
         {/* ========================================================== LEFT COLUMN */}
-        <aside style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* Card 1: Your Recent Tickets */}
+        <aside>
           <div className="support-sidebar-card">
+            {/* Recent Tickets Section */}
             <h2 className="support-sidebar-header">{t('support.recentTickets')}</h2>
             <div className="support-ticket-list">
               {recentTickets.length > 0 ? (
@@ -221,15 +221,13 @@ export function Support() {
                 </div>
               )}
             </div>
-          </div>
 
-          {/* Card 2: Support Menu */}
-          <div className="support-sidebar-card">
-            <h2 className="support-sidebar-header">{t('support.title')}</h2>
+            {/* Help & Support Navigation Options (All together under Support) */}
+            <h2 className="support-sidebar-header" style={{ marginTop: 10 }}>{t('support.title')}</h2>
             <nav className="support-nav-list" aria-label="Support Navigation">
               <button
                 type="button"
-                className={`support-nav-item ${nav === 'my_tickets' ? 'active' : ''}`}
+                className={`support-nav-item ${nav === 'my_tickets' && !selectedTicketId ? 'active' : ''}`}
                 onClick={() => {
                   setNav('my_tickets');
                   setSelectedTicketId(null);
