@@ -1,86 +1,159 @@
-import { useState } from 'react';
+import { useState, useRef, type ChangeEvent, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AnimatePresence, m } from 'motion/react';
 import {
-  CheckCircle2,
-  ChevronDown,
-  ChevronUp,
-  HeartPulse,
+  Activity,
+  ArrowLeft,
+  BookOpen,
+  ChevronRight,
+  Download,
+  Eye,
+  FolderGit2,
   LifeBuoy,
-  PlusCircle,
+  Maximize2,
+  Megaphone,
+  MessageSquarePlus,
+  Paperclip,
+  Plus,
   Send,
   ShieldAlert,
-  ShoppingBag,
+  X,
 } from 'lucide-react';
 import { Page } from '../ui/feedback';
-import { Button, Card, CardHeader, EmptyState, ListSkeleton, Notice, Segmented } from '../ui/primitives';
+import { Button } from '../ui/primitives';
 import { useToast } from '../ui/Toast';
+import { useSession } from '../app/session';
 import { useCreateTicket, useMyTickets, useReplyTicket } from '../lib/queries';
 import { formatRelative } from '../lib/format';
-import type { SupportTicket } from '../lib/types';
+import type { TicketMessage } from '../lib/types';
 
-type Tab = 'new' | 'list';
+type SupportNav = 'open' | 'my_tickets' | 'announcements' | 'knowledgebase' | 'downloads' | 'network';
 
 export function Support() {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { data: tickets, isLoading, isError, refetch } = useMyTickets();
+  const { me } = useSession();
+  const { data: tickets, refetch } = useMyTickets();
   const createMutation = useCreateTicket();
 
-  const [activeTab, setActiveTab] = useState<Tab>('new');
-  const [selectedProduct, setSelectedProduct] = useState<'pulsepos' | 'healora'>('pulsepos');
-  const [category, setCategory] = useState<string>('SYNC_FAILURE');
-  const [severity, setSeverity] = useState<'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW'>('MEDIUM');
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [expandedTicket, setExpandedTicket] = useState<string | null>(null);
-  const [replyText, setReplyText] = useState<Record<string, string>>({});
+  // Navigation State
+  const [nav, setNav] = useState<SupportNav>('open');
+  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
 
-  const replyMutation = useReplyTicket(expandedTicket ?? '');
+  // Form State
+  const [subject, setSubject] = useState('');
+  const [department, setDepartment] = useState('Technical Support');
+  const [relatedService, setRelatedService] = useState<'pulsepos' | 'healora' | 'none'>('pulsepos');
+  const [priority, setPriority] = useState<'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'>('MEDIUM');
+  const [message, setMessage] = useState('');
+  const [isPreview, setIsPreview] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [attachments, setAttachments] = useState<{ id: string; name: string; size: string }[]>([]);
 
-  const ticketCount = tickets?.length ?? 0;
+  // Reply State
+  const [replyBody, setReplyBody] = useState('');
+  const replyMutation = useReplyTicket(selectedTicketId ?? '');
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const ticketList = tickets ?? [];
+  const ticketCount = ticketList.length;
+  const recentTickets = ticketList.slice(0, 5);
+
+  const activeTicket = selectedTicketId
+    ? ticketList.find((tkt) => tkt.ticket_number === selectedTicketId)
+    : null;
+
+  // Editor helpers
+  const insertFormatting = (prefix: string, suffix: string = '') => {
+    const el = textareaRef.current;
+    if (!el) return;
+    const start = el.selectionStart;
+    const end = el.selectionEnd;
+    const text = el.value;
+    const selected = text.substring(start, end) || 'text';
+    const replacement = `${prefix}${selected}${suffix}`;
+    const nextVal = text.substring(0, start) + replacement + text.substring(end);
+    setMessage(nextVal);
+    setTimeout(() => {
+      el.focus();
+      el.setSelectionRange(start + prefix.length, start + prefix.length + selected.length);
+    }, 10);
+  };
+
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const newItems: { id: string; name: string; size: string }[] = [];
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i];
+      if (f.size > 2 * 1024 * 1024) {
+        toast(`File ${f.name} exceeds 2MB limit`, 'error');
+        continue;
+      }
+      newItems.push({
+        id: `${Date.now()}-${i}`,
+        name: f.name,
+        size: `${Math.round(f.size / 1024)} KB`,
+      });
+    }
+    setAttachments((prev) => [...prev, ...newItems]);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const removeAttachment = (id: string) => {
+    setAttachments((prev) => prev.filter((a) => a.id !== id));
+  };
+
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !description.trim()) return;
+    if (!subject.trim() || !message.trim()) {
+      toast('Please provide a subject and message.', 'error');
+      return;
+    }
 
     try {
       const created = await createMutation.mutateAsync({
-        product_slug: selectedProduct,
-        title: title.trim(),
-        category,
-        severity,
-        description: description.trim(),
+        product_slug: relatedService === 'none' ? 'pulsepos' : relatedService,
+        title: subject.trim(),
+        category: department === 'Billing & Commission' ? 'BILLING' : 'OTHER',
+        severity: priority,
+        description: message.trim(),
         system_diagnostics: {
-          submitted_from: 'Partner Portal',
+          submitted_from: 'Partner Portal (WHMCS Desk)',
+          department,
+          related_service: relatedService,
+          attachments: attachments.map((a) => a.name),
           user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : 'Browser',
           client_time: new Date().toISOString(),
         },
       });
 
       toast(t('support.ticketCreated', { number: created.ticket_number }));
-      setTitle('');
-      setDescription('');
-      setActiveTab('list');
-      setExpandedTicket(created.ticket_number);
+      setSubject('');
+      setMessage('');
+      setAttachments([]);
+      setSelectedTicketId(created.ticket_number);
+      setNav('my_tickets');
     } catch (err: any) {
       toast(err?.message || t('errors.generic'), 'error');
     }
   };
 
-  const handleSendReply = async (ticketNumber: string) => {
-    const text = replyText[ticketNumber]?.trim();
-    if (!text) return;
-
+  const handleSendReply = async () => {
+    if (!replyBody.trim() || !selectedTicketId) return;
     try {
-      await replyMutation.mutateAsync({ body: text });
+      await replyMutation.mutateAsync({ body: replyBody.trim() });
       toast(t('support.replySent'));
-      setReplyText((prev) => ({ ...prev, [ticketNumber]: '' }));
+      setReplyBody('');
       void refetch();
     } catch (err: any) {
       toast(err?.message || t('errors.generic'), 'error');
     }
   };
+
+  const lineCount = message ? message.split('\n').length : 0;
+  const wordCount = message.trim() ? message.trim().split(/\s+/).length : 0;
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -99,472 +172,1056 @@ export function Support() {
     }
   };
 
-  const getSeverityBadge = (sev: string) => {
-    switch (sev) {
+  const getPriorityBadge = (prio: string) => {
+    switch (prio) {
       case 'CRITICAL':
-        return <span style={{ color: 'var(--danger)', fontWeight: 700, fontSize: '0.75rem' }}>CRITICAL (2h)</span>;
+        return <span style={{ color: 'var(--danger)', fontWeight: 700, fontSize: '0.8125rem' }}>CRITICAL</span>;
       case 'HIGH':
-        return <span style={{ color: 'var(--warning)', fontWeight: 700, fontSize: '0.75rem' }}>HIGH (8h)</span>;
+        return <span style={{ color: 'var(--warning)', fontWeight: 700, fontSize: '0.8125rem' }}>HIGH</span>;
       case 'LOW':
-        return <span style={{ color: 'var(--text-tertiary)', fontWeight: 600, fontSize: '0.75rem' }}>LOW</span>;
+        return <span style={{ color: '#94a3b8', fontWeight: 600, fontSize: '0.8125rem' }}>LOW</span>;
       default:
-        return <span style={{ color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.75rem' }}>MEDIUM</span>;
+        return <span style={{ color: '#cbd5e1', fontWeight: 600, fontSize: '0.8125rem' }}>MEDIUM</span>;
     }
   };
 
   return (
-    <Page
-      title={t('support.title')}
-      subtitle={t('support.subtitle')}
-      actions={
-        <Segmented<Tab>
-          id="support-tab"
-          label={t('support.title')}
-          value={activeTab}
-          onChange={setActiveTab}
-          options={[
-            { value: 'new', label: t('support.newTicket') },
-            { value: 'list', label: t('support.myTickets', { count: ticketCount }) },
-          ]}
-        />
-      }
-    >
-      <div className="stack" style={{ gap: 24, maxWidth: 840 }}>
-        {activeTab === 'new' ? (
-          <Card pad>
-            <CardHeader
-              title={
-                <div className="row" style={{ gap: 10 }}>
-                  <LifeBuoy size={20} color="var(--brand)" aria-hidden="true" />
-                  <span>{t('support.newTicket')}</span>
+    <Page title={t('support.title')} subtitle={t('support.subtitle')}>
+      <div className="support-layout">
+        {/* ========================================================== LEFT COLUMN */}
+        <aside style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* Card 1: Your Recent Tickets */}
+          <div className="support-sidebar-card">
+            <h2 className="support-sidebar-header">{t('support.recentTickets')}</h2>
+            <div className="support-ticket-list">
+              {recentTickets.length > 0 ? (
+                recentTickets.map((tkt) => {
+                  const isSelected = selectedTicketId === tkt.ticket_number && nav === 'my_tickets';
+                  return (
+                    <button
+                      key={tkt.id}
+                      type="button"
+                      className={`support-ticket-item ${isSelected ? 'active' : ''}`}
+                      onClick={() => {
+                        setSelectedTicketId(tkt.ticket_number);
+                        setNav('my_tickets');
+                      }}
+                      title={`${tkt.ticket_number} - ${tkt.title}`}
+                    >
+                      <strong style={{ color: isSelected ? '#38bdf8' : '#e2e8f0', marginRight: 4 }}>
+                        #{tkt.ticket_number}
+                      </strong>
+                      <span> - {tkt.title}</span>
+                    </button>
+                  );
+                })
+              ) : (
+                <div style={{ padding: '8px 10px', fontSize: '0.8125rem', color: '#64748b' }}>
+                  {t('support.noTickets')}
                 </div>
-              }
-              subtitle={t('support.selectProduct')}
-            />
-
-            <form onSubmit={handleSubmit} className="stack" style={{ gap: 20, marginTop: 16 }}>
-              {/* Product Selection Cards */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                <button
-                  type="button"
-                  onClick={() => setSelectedProduct('pulsepos')}
-                  style={{
-                    padding: '16px',
-                    borderRadius: '10px',
-                    textAlign: 'left',
-                    cursor: 'pointer',
-                    border: selectedProduct === 'pulsepos' ? '2px solid #ea580c' : '1px solid var(--border)',
-                    background: selectedProduct === 'pulsepos' ? 'rgba(234, 88, 12, 0.08)' : 'var(--bg-subtle)',
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  <div className="row" style={{ gap: 10, alignItems: 'center' }}>
-                    <div
-                      style={{
-                        padding: 8,
-                        borderRadius: 8,
-                        background: '#ea580c',
-                        color: '#fff',
-                        display: 'flex',
-                      }}
-                    >
-                      <ShoppingBag size={20} />
-                    </div>
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: '0.9375rem', color: 'var(--text-primary)' }}>
-                        {t('support.pulseposTitle')}
-                      </div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: 2 }}>
-                        {t('support.pulseposDesc')}
-                      </div>
-                    </div>
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setSelectedProduct('healora')}
-                  style={{
-                    padding: '16px',
-                    borderRadius: '10px',
-                    textAlign: 'left',
-                    cursor: 'pointer',
-                    border: selectedProduct === 'healora' ? '2px solid #0891b2' : '1px solid var(--border)',
-                    background: selectedProduct === 'healora' ? 'rgba(8, 145, 178, 0.08)' : 'var(--bg-subtle)',
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  <div className="row" style={{ gap: 10, alignItems: 'center' }}>
-                    <div
-                      style={{
-                        padding: 8,
-                        borderRadius: 8,
-                        background: '#0891b2',
-                        color: '#fff',
-                        display: 'flex',
-                      }}
-                    >
-                      <HeartPulse size={20} />
-                    </div>
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: '0.9375rem', color: 'var(--text-primary)' }}>
-                        {t('support.healoraTitle')}
-                      </div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: 2 }}>
-                        {t('support.healoraDesc')}
-                      </div>
-                    </div>
-                  </div>
-                </button>
-              </div>
-
-              {/* Healora Healthcare Privacy Notice */}
-              {selectedProduct === 'healora' && (
-                <m.div
-                  initial={{ opacity: 0, y: -4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  style={{
-                    padding: '12px 16px',
-                    borderRadius: '8px',
-                    background: 'rgba(234, 179, 8, 0.12)',
-                    border: '1px solid rgba(234, 179, 8, 0.35)',
-                    display: 'flex',
-                    gap: 12,
-                    alignItems: 'flex-start',
-                  }}
-                >
-                  <ShieldAlert size={18} color="var(--warning)" style={{ flexShrink: 0, marginTop: 2 }} />
-                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-primary)', lineHeight: 1.4 }}>
-                    <strong>{t('support.healoraPrivacyNotice')}</strong>
-                  </div>
-                </m.div>
               )}
+            </div>
+          </div>
 
-              {/* Category & Severity Grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
-                <div className="field">
-                  <label htmlFor="issue-category" className="field__label">
-                    {t('support.category')}
-                  </label>
-                  <select
-                    id="issue-category"
-                    className="select"
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
+          {/* Card 2: Support Menu */}
+          <div className="support-sidebar-card">
+            <h2 className="support-sidebar-header">{t('support.title')}</h2>
+            <nav className="support-nav-list" aria-label="Support Navigation">
+              <button
+                type="button"
+                className={`support-nav-item ${nav === 'my_tickets' ? 'active' : ''}`}
+                onClick={() => {
+                  setNav('my_tickets');
+                  setSelectedTicketId(null);
+                }}
+              >
+                <div className="row" style={{ gap: 10, alignItems: 'center' }}>
+                  <FolderGit2 size={16} />
+                  <span>{t('support.mySupportTickets')}</span>
+                </div>
+                {ticketCount > 0 && (
+                  <span
                     style={{
-                      width: '100%',
-                      padding: '10px 12px',
-                      borderRadius: '8px',
-                      border: '1px solid var(--border)',
-                      background: 'var(--bg-subtle)',
-                      color: 'var(--text-primary)',
-                      font: 'inherit',
+                      background: '#1e293b',
+                      color: '#94a3b8',
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      padding: '2px 8px',
+                      borderRadius: 12,
                     }}
                   >
-                    <option value="SYNC_FAILURE">{t('support.catSync')}</option>
-                    <option value="CRASH">{t('support.catCrash')}</option>
-                    <option value="BILLING_ISSUE">{t('support.catBilling')}</option>
-                    <option value="LOGIN_ERROR">{t('support.catLogin')}</option>
-                    <option value="OTHER">{t('support.catOther')}</option>
-                  </select>
+                    {ticketCount}
+                  </span>
+                )}
+              </button>
+
+              <button
+                type="button"
+                className={`support-nav-item ${nav === 'announcements' ? 'active' : ''}`}
+                onClick={() => setNav('announcements')}
+              >
+                <div className="row" style={{ gap: 10, alignItems: 'center' }}>
+                  <Megaphone size={16} />
+                  <span>{t('support.announcements')}</span>
                 </div>
+              </button>
 
-                <div className="field">
-                  <label htmlFor="issue-severity" className="field__label">
-                    {t('support.severity')}
-                  </label>
-                  <select
-                    id="issue-severity"
-                    className="select"
-                    value={severity}
-                    onChange={(e) => setSeverity(e.target.value as any)}
-                    style={{
-                      width: '100%',
-                      padding: '10px 12px',
-                      borderRadius: '8px',
-                      border: '1px solid var(--border)',
-                      background: 'var(--bg-subtle)',
-                      color: 'var(--text-primary)',
-                      font: 'inherit',
-                    }}
-                  >
-                    <option value="MEDIUM">{t('support.sevMedium')}</option>
-                    <option value="HIGH">{t('support.sevHigh')}</option>
-                    <option value="CRITICAL">{t('support.sevCritical')}</option>
-                    <option value="LOW">{t('support.sevLow')}</option>
-                  </select>
+              <button
+                type="button"
+                className={`support-nav-item ${nav === 'knowledgebase' ? 'active' : ''}`}
+                onClick={() => setNav('knowledgebase')}
+              >
+                <div className="row" style={{ gap: 10, alignItems: 'center' }}>
+                  <BookOpen size={16} />
+                  <span>{t('support.knowledgebase')}</span>
                 </div>
-              </div>
+              </button>
 
-              {/* Title Input */}
-              <div className="field">
-                <label htmlFor="issue-title" className="field__label">
-                  {t('support.issueTitle')}
-                </label>
-                <input
-                  id="issue-title"
-                  type="text"
-                  className="input"
-                  placeholder={t('support.issueTitlePlaceholder')}
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  required
+              <button
+                type="button"
+                className={`support-nav-item ${nav === 'downloads' ? 'active' : ''}`}
+                onClick={() => setNav('downloads')}
+              >
+                <div className="row" style={{ gap: 10, alignItems: 'center' }}>
+                  <Download size={16} />
+                  <span>{t('support.downloads')}</span>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                className={`support-nav-item ${nav === 'network' ? 'active' : ''}`}
+                onClick={() => setNav('network')}
+              >
+                <div className="row" style={{ gap: 10, alignItems: 'center' }}>
+                  <Activity size={16} />
+                  <span>{t('support.networkStatus')}</span>
+                </div>
+                <span
                   style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: '8px',
-                    border: '1px solid var(--border)',
-                    background: 'var(--bg-subtle)',
-                    color: 'var(--text-primary)',
-                    font: 'inherit',
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    background: '#10b981',
+                    boxShadow: '0 0 8px #10b981',
                   }}
+                  title="Operational"
                 />
-              </div>
+              </button>
 
-              {/* Description Input */}
-              <div className="field">
-                <label htmlFor="issue-desc" className="field__label">
-                  {t('support.description')}
-                </label>
-                <textarea
-                  id="issue-desc"
-                  rows={5}
-                  className="textarea"
-                  placeholder={t('support.descriptionPlaceholder')}
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  required
+              <button
+                type="button"
+                className={`support-nav-item ${nav === 'open' ? 'active' : ''}`}
+                onClick={() => {
+                  setNav('open');
+                  setSelectedTicketId(null);
+                }}
+              >
+                <div className="row" style={{ gap: 10, alignItems: 'center' }}>
+                  <MessageSquarePlus size={16} />
+                  <span>{t('support.openTicket')}</span>
+                </div>
+              </button>
+            </nav>
+          </div>
+        </aside>
+
+        {/* ========================================================== RIGHT MAIN PANEL */}
+        <main style={{ minWidth: 0 }}>
+          {/* TAB 1: OPEN TICKET FORM (MATCHES SCREENSHOT 2) */}
+          {nav === 'open' && (
+            <div className="support-main-card">
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  borderBottom: '1px solid #1e2c40',
+                  paddingBottom: 16,
+                }}
+              >
+                <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#f8fafc', margin: 0 }}>
+                  {t('support.openTicket')}
+                </h1>
+                <div
                   style={{
-                    width: '100%',
-                    padding: '12px 14px',
-                    borderRadius: '8px',
-                    border: '1px solid var(--border)',
-                    background: 'var(--bg-subtle)',
-                    color: 'var(--text-primary)',
-                    font: 'inherit',
-                    resize: 'vertical',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '4px 10px',
+                    borderRadius: 20,
+                    background: 'rgba(16, 185, 129, 0.1)',
+                    border: '1px solid rgba(16, 185, 129, 0.3)',
+                    color: '#34d399',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
                   }}
-                />
-              </div>
-
-              <div className="row" style={{ justifyContent: 'flex-end', gap: 12 }}>
-                <Button
-                  type="submit"
-                  variant="primary"
-                  size="lg"
-                  loading={createMutation.isPending}
-                  disabled={!title.trim() || !description.trim()}
                 >
-                  <Send size={16} aria-hidden="true" style={{ marginRight: 6 }} />
-                  {createMutation.isPending ? t('support.submitting') : t('support.submit')}
-                </Button>
+                  <span
+                    style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981' }}
+                  />
+                  <span>Engineers Online</span>
+                </div>
               </div>
-            </form>
-          </Card>
-        ) : (
-          /* My Tickets List */
-          <div className="stack" style={{ gap: 16 }}>
-            {isLoading ? (
-              <ListSkeleton rows={3} />
-            ) : isError ? (
-              <Notice tone="danger">{t('errors.generic')}</Notice>
-            ) : !tickets || tickets.length === 0 ? (
-              <Card pad>
-                <EmptyState
-                  title={t('support.noTickets')}
-                  body={t('support.noTicketsDesc')}
-                  action={
-                    <Button variant="primary" onClick={() => setActiveTab('new')}>
-                      <PlusCircle size={16} aria-hidden="true" style={{ marginRight: 6 }} />
-                      {t('support.newTicket')}
-                    </Button>
-                  }
-                />
-              </Card>
-            ) : (
-              tickets.map((tkt: SupportTicket) => {
-                const isExpanded = expandedTicket === tkt.ticket_number;
-                return (
-                  <div key={tkt.id} className="card stack" style={{ overflow: 'hidden' }}>
-                    {/* Header item */}
-                    <div
-                      style={{
-                        padding: '16px 20px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        gap: 12,
-                        background: isExpanded ? 'var(--bg-subtle)' : 'transparent',
-                      }}
-                      onClick={() => setExpandedTicket(isExpanded ? null : tkt.ticket_number)}
-                    >
-                      <div className="stack" style={{ gap: 4 }}>
-                        <div className="row" style={{ gap: 8, alignItems: 'center' }}>
-                          <code style={{ fontWeight: 700, color: 'var(--brand)', fontSize: '0.875rem' }}>
-                            {tkt.ticket_number}
-                          </code>
-                          <span
-                            style={{
-                              fontSize: '0.6875rem',
-                              fontWeight: 700,
-                              padding: '2px 8px',
-                              borderRadius: '4px',
-                              background: tkt.product_slug === 'healora' ? 'rgba(8, 145, 178, 0.15)' : 'rgba(234, 88, 12, 0.15)',
-                              color: tkt.product_slug === 'healora' ? '#06b6d4' : '#f97316',
-                              textTransform: 'uppercase',
-                            }}
-                          >
-                            {tkt.product_slug === 'healora' ? 'Healora' : 'PulsePOS'}
-                          </span>
-                          {getSeverityBadge(tkt.severity)}
-                        </div>
-                        <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: 'var(--text-primary)' }}>
-                          {tkt.title}
-                        </div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
-                          {tkt.category} • {formatRelative(tkt.created_at)}
-                        </div>
-                      </div>
 
-                      <div className="row" style={{ gap: 12, alignItems: 'center' }}>
-                        {getStatusBadge(tkt.status)}
-                        {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                      </div>
+              <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+                {/* Row 1: Name and Email */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                  <div>
+                    <label
+                      htmlFor="user-name"
+                      style={{ display: 'block', fontSize: '0.8125rem', color: '#94a3b8', marginBottom: 6, fontWeight: 500 }}
+                    >
+                      {t('account.name')}
+                    </label>
+                    <input
+                      id="user-name"
+                      type="text"
+                      className="support-input-field"
+                      value={me?.display_name || 'Md. Masfakuzzaman'}
+                      readOnly
+                      style={{ opacity: 0.85, cursor: 'not-allowed' }}
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="user-email"
+                      style={{ display: 'block', fontSize: '0.8125rem', color: '#94a3b8', marginBottom: 6, fontWeight: 500 }}
+                    >
+                      {t('account.email')}
+                    </label>
+                    <input
+                      id="user-email"
+                      type="email"
+                      className="support-input-field"
+                      value={me?.email || 'user@example.com'}
+                      readOnly
+                      style={{ opacity: 0.85, cursor: 'not-allowed' }}
+                    />
+                  </div>
+                </div>
+
+                {/* Row 2: Subject */}
+                <div>
+                  <label
+                    htmlFor="ticket-subject"
+                    style={{ display: 'block', fontSize: '0.8125rem', color: '#94a3b8', marginBottom: 6, fontWeight: 500 }}
+                  >
+                    {t('support.subject')} <span style={{ color: 'var(--danger)' }}>*</span>
+                  </label>
+                  <input
+                    id="ticket-subject"
+                    type="text"
+                    required
+                    className="support-input-field"
+                    placeholder="e.g. Server payment paid but its not yet confirmed / POS printer error"
+                    value={subject}
+                    onChange={(e) => setSubject(e.target.value)}
+                  />
+                </div>
+
+                {/* Row 3: Department, Related Service, Priority (3 Columns) */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>
+                  <div>
+                    <label
+                      htmlFor="ticket-dept"
+                      style={{ display: 'block', fontSize: '0.8125rem', color: '#94a3b8', marginBottom: 6, fontWeight: 500 }}
+                    >
+                      {t('support.department')}
+                    </label>
+                    <select
+                      id="ticket-dept"
+                      className="support-select-field"
+                      value={department}
+                      onChange={(e) => setDepartment(e.target.value)}
+                    >
+                      <option value="General Enquiries">{t('support.deptGeneral')}</option>
+                      <option value="Technical Support">{t('support.deptTech')}</option>
+                      <option value="Billing & Commission">{t('support.deptBilling')}</option>
+                      <option value="API & Integration">{t('support.deptApi')}</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="ticket-service"
+                      style={{ display: 'block', fontSize: '0.8125rem', color: '#94a3b8', marginBottom: 6, fontWeight: 500 }}
+                    >
+                      {t('support.relatedService')}
+                    </label>
+                    <select
+                      id="ticket-service"
+                      className="support-select-field"
+                      value={relatedService}
+                      onChange={(e) => setRelatedService(e.target.value as any)}
+                    >
+                      <option value="pulsepos">{t('support.servicePulsepos')}</option>
+                      <option value="healora">{t('support.serviceHealora')}</option>
+                      <option value="none">{t('support.serviceNone')}</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="ticket-priority"
+                      style={{ display: 'block', fontSize: '0.8125rem', color: '#94a3b8', marginBottom: 6, fontWeight: 500 }}
+                    >
+                      {t('support.priority')}
+                    </label>
+                    <select
+                      id="ticket-priority"
+                      className="support-select-field"
+                      value={priority}
+                      onChange={(e) => setPriority(e.target.value as any)}
+                    >
+                      <option value="LOW">{t('support.prioLow')}</option>
+                      <option value="MEDIUM">{t('support.prioMedium')}</option>
+                      <option value="HIGH">{t('support.prioHigh')}</option>
+                      <option value="CRITICAL">{t('support.prioCritical')}</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Healora Privacy Notice if Healora selected */}
+                {relatedService === 'healora' && (
+                  <div
+                    style={{
+                      padding: '12px 14px',
+                      borderRadius: 8,
+                      background: 'rgba(234, 179, 8, 0.12)',
+                      border: '1px solid rgba(234, 179, 8, 0.3)',
+                      display: 'flex',
+                      gap: 10,
+                      alignItems: 'center',
+                    }}
+                  >
+                    <ShieldAlert size={18} color="var(--warning)" style={{ flexShrink: 0 }} />
+                    <span style={{ fontSize: '0.8125rem', color: '#fef08a' }}>
+                      {t('support.healoraPrivacyNotice')}
+                    </span>
+                  </div>
+                )}
+
+                {/* Row 4: Message with Complete Rich Toolbar */}
+                <div>
+                  <label
+                    htmlFor="ticket-message"
+                    style={{ display: 'block', fontSize: '0.8125rem', color: '#94a3b8', marginBottom: 6, fontWeight: 500 }}
+                  >
+                    {t('support.message')} <span style={{ color: 'var(--danger)' }}>*</span>
+                  </label>
+
+                  <div className="support-editor-wrap">
+                    {/* Toolbar */}
+                    <div className="support-editor-toolbar" role="toolbar" aria-label="Editor formatting">
+                      <button
+                        type="button"
+                        className="support-toolbar-btn"
+                        onClick={() => insertFormatting('**', '**')}
+                        title="Bold"
+                      >
+                        B
+                      </button>
+                      <button
+                        type="button"
+                        className="support-toolbar-btn"
+                        onClick={() => insertFormatting('*', '*')}
+                        title="Italic"
+                        style={{ fontStyle: 'italic' }}
+                      >
+                        I
+                      </button>
+                      <button
+                        type="button"
+                        className="support-toolbar-btn"
+                        onClick={() => insertFormatting('### ')}
+                        title="Heading"
+                      >
+                        H
+                      </button>
+                      <span style={{ width: 1, height: 16, background: '#283952', margin: '0 4px' }} />
+                      <button
+                        type="button"
+                        className="support-toolbar-btn"
+                        onClick={() => insertFormatting('[', '](https://)')}
+                        title="Insert Link"
+                      >
+                        🔗
+                      </button>
+                      <button
+                        type="button"
+                        className="support-toolbar-btn"
+                        onClick={() => insertFormatting('![description](', ')')}
+                        title="Insert Image"
+                      >
+                        🖼️
+                      </button>
+                      <button
+                        type="button"
+                        className="support-toolbar-btn"
+                        onClick={() => insertFormatting('- ')}
+                        title="Bullet List"
+                      >
+                        ≡
+                      </button>
+                      <button
+                        type="button"
+                        className="support-toolbar-btn"
+                        onClick={() => insertFormatting('```\n', '\n```')}
+                        title="Code Block"
+                      >
+                        &gt;_
+                      </button>
+                      <button
+                        type="button"
+                        className="support-toolbar-btn"
+                        onClick={() => insertFormatting('> ')}
+                        title="Quote"
+                      >
+                        ❝
+                      </button>
+                      <span style={{ width: 1, height: 16, background: '#283952', margin: '0 4px' }} />
+                      <button
+                        type="button"
+                        className={`support-toolbar-btn ${isPreview ? 'active' : ''}`}
+                        onClick={() => setIsPreview(!isPreview)}
+                        style={{ fontSize: '0.75rem', gap: 4 }}
+                      >
+                        <Eye size={12} />
+                        Preview
+                      </button>
+                      <button
+                        type="button"
+                        className={`support-toolbar-btn ${isFullscreen ? 'active' : ''}`}
+                        onClick={() => setIsFullscreen(!isFullscreen)}
+                        title="Fullscreen"
+                        style={{ marginLeft: 'auto' }}
+                      >
+                        <Maximize2 size={13} />
+                      </button>
                     </div>
 
-                    {/* Expanded details & messages */}
-                    <AnimatePresence>
-                      {isExpanded && (
-                        <m.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          exit={{ opacity: 0, height: 0 }}
+                    {/* Textarea or Preview */}
+                    {isPreview ? (
+                      <div
+                        style={{
+                          minHeight: 200,
+                          padding: '14px 16px',
+                          background: '#131b2a',
+                          color: '#e2e8f0',
+                          fontSize: '0.875rem',
+                          whiteSpace: 'pre-wrap',
+                          lineHeight: 1.6,
+                        }}
+                      >
+                        {message || <span style={{ color: '#64748b' }}>Nothing to preview</span>}
+                      </div>
+                    ) : (
+                      <textarea
+                        ref={textareaRef}
+                        id="ticket-message"
+                        required
+                        className="support-editor-textarea"
+                        placeholder="Please describe what happened, error codes, and steps to reproduce..."
+                        value={message}
+                        onChange={(e) => setMessage(e.target.value)}
+                        style={{ minHeight: isFullscreen ? 380 : 200 }}
+                      />
+                    )}
+
+                    {/* Footer bar */}
+                    <div className="support-editor-footer">
+                      <span>lines: {lineCount}</span>
+                      <span>words: {wordCount}</span>
+                      <span style={{ color: '#10b981' }}>saved</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Row 5: Attachments */}
+                <div>
+                  <label
+                    style={{ display: 'block', fontSize: '0.8125rem', color: '#94a3b8', marginBottom: 6, fontWeight: 500 }}
+                  >
+                    {t('support.attachments')}
+                  </label>
+
+                  <div className="support-attachment-row">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      id="support-file-input"
+                      multiple
+                      accept=".jpg,.gif,.jpeg,.png,.txt,.pdf"
+                      onChange={handleFileChange}
+                      style={{ display: 'none' }}
+                    />
+
+                    <div className="support-file-input-wrap">
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="btn btn--secondary"
+                        style={{
+                          padding: '4px 10px',
+                          fontSize: '0.75rem',
+                          marginRight: 10,
+                          background: '#24354e',
+                          borderColor: '#384d6e',
+                          color: '#f1f5f9',
+                        }}
+                      >
+                        {t('support.chooseFile')}
+                      </button>
+                      <span style={{ color: '#64748b', fontSize: '0.8125rem' }}>
+                        {attachments.length > 0
+                          ? `${attachments.length} file(s) attached`
+                          : t('support.noFileChosen')}
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="btn btn--secondary"
+                      style={{
+                        padding: '8px 16px',
+                        background: '#202d42',
+                        borderColor: '#2d3f5c',
+                        color: '#cbd5e1',
+                        borderRadius: 8,
+                        fontSize: '0.8125rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                      }}
+                    >
+                      <Plus size={14} />
+                      {t('support.addMore')}
+                    </button>
+                  </div>
+
+                  {/* Attached file list */}
+                  {attachments.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
+                      {attachments.map((file) => (
+                        <div
+                          key={file.id}
                           style={{
-                            borderTop: '1px solid var(--border)',
-                            padding: '20px',
-                            background: 'var(--bg-subtle)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            padding: '4px 8px',
+                            background: '#19263a',
+                            border: '1px solid #283a54',
+                            borderRadius: 6,
+                            fontSize: '0.75rem',
+                            color: '#cbd5e1',
                           }}
                         >
-                          <div className="stack" style={{ gap: 16 }}>
-                            {/* Problem description */}
-                            <div>
-                              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
-                                {t('support.description')}
-                              </div>
-                              <p style={{ marginTop: 4, fontSize: '0.875rem', color: 'var(--text-primary)', whiteSpace: 'pre-wrap' }}>
-                                {tkt.description}
-                              </p>
-                            </div>
+                          <Paperclip size={12} color="#38bdf8" />
+                          <span>{file.name}</span>
+                          <span style={{ color: '#64748b' }}>({file.size})</span>
+                          <button
+                            type="button"
+                            onClick={() => removeAttachment(file.id)}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: '#94a3b8',
+                              cursor: 'pointer',
+                              padding: 2,
+                            }}
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
-                            {/* Official Resolution Summary if resolved */}
-                            {tkt.resolution_summary && (
-                              <div
-                                style={{
-                                  padding: '12px 16px',
-                                  borderRadius: '8px',
-                                  background: 'rgba(16, 185, 129, 0.1)',
-                                  border: '1px solid rgba(16, 185, 129, 0.3)',
-                                }}
-                              >
-                                <div className="row" style={{ gap: 6, color: 'var(--success)', fontWeight: 700, fontSize: '0.8125rem' }}>
-                                  <CheckCircle2 size={16} />
-                                  <span>Resolution Summary:</span>
-                                </div>
-                                <p style={{ marginTop: 4, fontSize: '0.8125rem', color: 'var(--text-primary)' }}>
-                                  {tkt.resolution_summary}
-                                </p>
-                              </div>
-                            )}
+                  <p style={{ margin: '6px 0 0', fontSize: '0.6875rem', color: '#64748b' }}>
+                    {t('support.allowedFiles')}
+                  </p>
+                </div>
 
-                            {/* Message timeline thread */}
-                            {tkt.messages && tkt.messages.length > 0 && (
-                              <div className="stack" style={{ gap: 10 }}>
-                                <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
-                                  Updates & Conversation
-                                </div>
-                                <div className="stack" style={{ gap: 8 }}>
-                                  {tkt.messages.map((mItem, idx) => {
-                                    const isEngineer = mItem.sender_type !== 'PARTNER_PORTAL_USER';
-                                    return (
-                                      <div
-                                        key={idx}
-                                        style={{
-                                          padding: '10px 14px',
-                                          borderRadius: '8px',
-                                          background: isEngineer ? 'rgba(59, 130, 246, 0.08)' : 'var(--bg-card)',
-                                          border: isEngineer ? '1px solid rgba(59, 130, 246, 0.25)' : '1px solid var(--border)',
-                                        }}
-                                      >
-                                        <div className="row" style={{ justifyContent: 'space-between', fontSize: '0.6875rem', fontWeight: 700, marginBottom: 4 }}>
-                                          <span style={{ color: isEngineer ? 'var(--brand)' : 'var(--text-primary)' }}>
-                                            {mItem.sender_name || (isEngineer ? 'Support Engineer' : 'You')}
-                                          </span>
-                                          <span style={{ color: 'var(--text-tertiary)' }}>
-                                            {formatRelative(mItem.created_at)}
-                                          </span>
-                                        </div>
-                                        <div style={{ fontSize: '0.8125rem', color: 'var(--text-primary)', whiteSpace: 'pre-wrap' }}>
-                                          {mItem.body}
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                            )}
+                {/* Submit Row */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8 }}>
+                  <Button
+                    type="submit"
+                    size="lg"
+                    loading={createMutation.isPending}
+                    style={{
+                      background: '#0284c7',
+                      borderColor: '#0284c7',
+                      color: '#ffffff',
+                      padding: '10px 24px',
+                      fontWeight: 600,
+                    }}
+                  >
+                    {createMutation.isPending ? t('support.submitting') : t('support.openTicket')}
+                  </Button>
+                </div>
+              </form>
+            </div>
+          )}
 
-                            {/* Reply composer */}
-                            {tkt.status !== 'CLOSED' && (
-                              <div className="row" style={{ gap: 8, marginTop: 4 }}>
-                                <input
-                                  type="text"
-                                  className="input"
-                                  placeholder={t('support.replyPlaceholder')}
-                                  value={replyText[tkt.ticket_number] || ''}
-                                  onChange={(e) =>
-                                    setReplyText((prev) => ({ ...prev, [tkt.ticket_number]: e.target.value }))
-                                  }
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                      e.preventDefault();
-                                      void handleSendReply(tkt.ticket_number);
-                                    }
-                                  }}
-                                  style={{
-                                    flex: 1,
-                                    padding: '8px 12px',
-                                    borderRadius: '6px',
-                                    border: '1px solid var(--border)',
-                                    background: 'var(--bg-card)',
-                                    color: 'var(--text-primary)',
-                                    fontSize: '0.8125rem',
-                                  }}
-                                />
-                                <Button
-                                  variant="secondary"
-                                  size="sm"
-                                  loading={replyMutation.isPending}
-                                  disabled={!replyText[tkt.ticket_number]?.trim()}
-                                  onClick={() => handleSendReply(tkt.ticket_number)}
-                                >
-                                  <Send size={14} style={{ marginRight: 4 }} />
-                                  {t('support.sendReply')}
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-                        </m.div>
-                      )}
-                    </AnimatePresence>
+          {/* TAB 2: MY SUPPORT TICKETS (LIST OR SINGLE CONVERSATION) */}
+          {nav === 'my_tickets' && (
+            <div className="support-main-card">
+              {activeTicket ? (
+                /* Thread Conversation View */
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      borderBottom: '1px solid #1e2c40',
+                      paddingBottom: 14,
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setSelectedTicketId(null)}
+                      className="btn btn--ghost"
+                      style={{ padding: '6px 10px', fontSize: '0.8125rem', color: '#38bdf8', gap: 6 }}
+                    >
+                      <ArrowLeft size={14} />
+                      {t('support.backToTickets')}
+                    </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      {getStatusBadge(activeTicket.status)}
+                      {getPriorityBadge(activeTicket.severity)}
+                    </div>
                   </div>
-                );
-              })
-            )}
-          </div>
-        )}
+
+                  <div>
+                    <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#f8fafc', margin: '0 0 6px' }}>
+                      #{activeTicket.ticket_number} - {activeTicket.title}
+                    </h2>
+                    <div style={{ display: 'flex', gap: 14, fontSize: '0.75rem', color: '#64748b' }}>
+                      <span>Service: <strong style={{ color: '#cbd5e1' }}>{activeTicket.product_slug.toUpperCase()}</strong></span>
+                      <span>Category: <strong style={{ color: '#cbd5e1' }}>{activeTicket.category}</strong></span>
+                      <span>Created: <strong style={{ color: '#cbd5e1' }}>{formatRelative(activeTicket.created_at)}</strong></span>
+                    </div>
+                  </div>
+
+                  {/* Message Thread */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 14,
+                      maxHeight: 480,
+                      overflowY: 'auto',
+                      padding: '12px 14px',
+                      background: '#0d1420',
+                      borderRadius: 10,
+                      border: '1px solid #1a2738',
+                    }}
+                  >
+                    {activeTicket.messages && activeTicket.messages.length > 0 ? (
+                      activeTicket.messages.map((msg: TicketMessage) => {
+                        const isEngineer = msg.sender_type === 'SUPPORT_ENGINEER' || msg.sender_type === 'SYSTEM';
+                        return (
+                          <div
+                            key={msg.id}
+                            style={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: 6,
+                              padding: '12px 14px',
+                              borderRadius: 8,
+                              background: isEngineer ? '#152438' : '#192231',
+                              border: isEngineer ? '1px solid #203a5c' : '1px solid #233246',
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                              <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+                                <strong style={{ fontSize: '0.8125rem', color: isEngineer ? '#38bdf8' : '#f1f5f9' }}>
+                                  {msg.sender_name || (isEngineer ? 'Support Engineer' : me?.display_name || 'Partner')}
+                                </strong>
+                                {isEngineer && (
+                                  <span
+                                    style={{
+                                      fontSize: '0.6875rem',
+                                      padding: '1px 6px',
+                                      background: '#0284c7',
+                                      color: '#fff',
+                                      borderRadius: 4,
+                                      fontWeight: 600,
+                                    }}
+                                  >
+                                    STAFF
+                                  </span>
+                                )}
+                              </div>
+                              <span style={{ fontSize: '0.6875rem', color: '#64748b' }}>
+                                {formatRelative(msg.created_at)}
+                              </span>
+                            </div>
+                            <div style={{ fontSize: '0.875rem', color: '#e2e8f0', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                              {msg.body}
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div style={{ fontSize: '0.875rem', color: '#e2e8f0', whiteSpace: 'pre-wrap' }}>
+                        {activeTicket.description}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Reply Form */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <label style={{ fontSize: '0.8125rem', color: '#94a3b8', fontWeight: 600 }}>
+                      {t('support.replyPlaceholder')}
+                    </label>
+                    <textarea
+                      rows={3}
+                      className="support-editor-textarea"
+                      placeholder={t('support.replyPlaceholder')}
+                      value={replyBody}
+                      onChange={(e) => setReplyBody(e.target.value)}
+                      style={{ minHeight: 90 }}
+                    />
+                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                      <Button
+                        size="md"
+                        loading={replyMutation.isPending}
+                        disabled={!replyBody.trim()}
+                        onClick={handleSendReply}
+                        style={{ background: '#0284c7', color: '#fff' }}
+                      >
+                        <Send size={14} style={{ marginRight: 6 }} />
+                        {t('support.sendReply')}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* Ticket List Table */
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      borderBottom: '1px solid #1e2c40',
+                      paddingBottom: 16,
+                    }}
+                  >
+                    <h1 style={{ fontSize: '1.375rem', fontWeight: 700, color: '#f8fafc', margin: 0 }}>
+                      {t('support.mySupportTickets')} ({ticketCount})
+                    </h1>
+                    <button
+                      type="button"
+                      onClick={() => setNav('open')}
+                      className="btn btn--primary"
+                      style={{ fontSize: '0.8125rem', padding: '6px 14px', background: '#0284c7' }}
+                    >
+                      <Plus size={14} style={{ marginRight: 4 }} />
+                      {t('support.openTicket')}
+                    </button>
+                  </div>
+
+                  {ticketList.length > 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {ticketList.map((tkt) => (
+                        <div
+                          key={tkt.id}
+                          onClick={() => setSelectedTicketId(tkt.ticket_number)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '14px 16px',
+                            background: '#152132',
+                            border: '1px solid #203148',
+                            borderRadius: 8,
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.borderColor = '#38bdf8';
+                            e.currentTarget.style.background = '#18273c';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.borderColor = '#203148';
+                            e.currentTarget.style.background = '#152132';
+                          }}
+                        >
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+                              <strong style={{ color: '#38bdf8', fontSize: '0.875rem' }}>
+                                #{tkt.ticket_number}
+                              </strong>
+                              <span style={{ color: '#f1f5f9', fontWeight: 600, fontSize: '0.875rem' }}>
+                                {tkt.title}
+                              </span>
+                            </div>
+                            <div style={{ display: 'flex', gap: 12, fontSize: '0.75rem', color: '#94a3b8' }}>
+                              <span>Service: <strong style={{ color: '#cbd5e1' }}>{tkt.product_slug.toUpperCase()}</strong></span>
+                              <span>Category: {tkt.category}</span>
+                              <span>Created: {formatRelative(tkt.created_at)}</span>
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            {getStatusBadge(tkt.status)}
+                            {getPriorityBadge(tkt.severity)}
+                            <ChevronRight size={16} color="#64748b" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ textAlign: 'center', padding: '48px 16px', color: '#64748b' }}>
+                      <LifeBuoy size={40} style={{ margin: '0 auto 12px', opacity: 0.4 }} />
+                      <p style={{ margin: '0 0 12px', fontWeight: 600, color: '#94a3b8' }}>
+                        {t('support.noTickets')}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setNav('open')}
+                        className="btn btn--secondary"
+                      >
+                        {t('support.openTicket')}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 3: KNOWLEDGEBASE */}
+          {nav === 'knowledgebase' && (
+            <div className="support-main-card">
+              <h1 style={{ fontSize: '1.375rem', fontWeight: 700, color: '#f8fafc', margin: 0 }}>
+                {t('support.knowledgebase')}
+              </h1>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12 }}>
+                {[
+                  {
+                    q: 'PulsePOS: How does offline transaction queue sync work?',
+                    a: 'PulsePOS securely stores all local transactions in IndexedDB when offline. As soon as connectivity is restored, the sync worker batches pending receipts to the cloud server.',
+                  },
+                  {
+                    q: 'PulsePOS: Thermal ESC/POS Receipt Printer setup guide',
+                    a: 'Ensure USB or LAN printer drivers are installed. In PulsePOS settings under Hardware > Receipt Printer, select your 80mm or 58mm printer model and test print.',
+                  },
+                  {
+                    q: 'Healora: Patient Privacy & Masking Policies',
+                    a: 'Under healthcare regulations, all patient identifiable data is strictly masked from partner referral portals. Commissions are tracked via anonymized encounter UUIDs.',
+                  },
+                  {
+                    q: 'Commission Payouts: How to withdraw to bKash, Nagad or Bank',
+                    a: 'Once your available balance reaches 500 BDT, navigate to the Withdraw tab, select your preferred payout channel, and submit your payout request.',
+                  },
+                ].map((item, idx) => (
+                  <div
+                    key={idx}
+                    style={{
+                      padding: 16,
+                      background: '#152132',
+                      border: '1px solid #203148',
+                      borderRadius: 8,
+                    }}
+                  >
+                    <h3 style={{ fontSize: '0.9375rem', fontWeight: 600, color: '#38bdf8', margin: '0 0 6px' }}>
+                      {item.q}
+                    </h3>
+                    <p style={{ fontSize: '0.8125rem', color: '#94a3b8', margin: 0, lineHeight: 1.5 }}>
+                      {item.a}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4: NETWORK STATUS */}
+          {nav === 'network' && (
+            <div className="support-main-card">
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  borderBottom: '1px solid #1e2c40',
+                  paddingBottom: 14,
+                }}
+              >
+                <h1 style={{ fontSize: '1.375rem', fontWeight: 700, color: '#f8fafc', margin: 0 }}>
+                  {t('support.networkStatus')}
+                </h1>
+                <span
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    color: '#34d399',
+                    fontSize: '0.8125rem',
+                    fontWeight: 600,
+                  }}
+                >
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981' }} />
+                  All Systems Operational
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {[
+                  { name: 'PulsePOS Core API & Sync Engine', uptime: '99.98%', status: 'Operational' },
+                  { name: 'Healora Telemedicine & Doctor Portal', uptime: '99.99%', status: 'Operational' },
+                  { name: 'Referral Attribution & Commission Service', uptime: '100%', status: 'Operational' },
+                  { name: 'bKash / Nagad / Bank Payout Gateway', uptime: '99.95%', status: 'Operational' },
+                  { name: 'Outbound Webhook Dispatcher', uptime: '100%', status: 'Operational' },
+                ].map((srv, idx) => (
+                  <div
+                    key={idx}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '12px 16px',
+                      background: '#152132',
+                      border: '1px solid #203148',
+                      borderRadius: 8,
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981' }} />
+                      <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#f1f5f9' }}>
+                        {srv.name}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                      <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Uptime: {srv.uptime}</span>
+                      <span
+                        style={{
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          color: '#34d399',
+                          background: 'rgba(16, 185, 129, 0.12)',
+                          padding: '2px 8px',
+                          borderRadius: 6,
+                        }}
+                      >
+                        {srv.status}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 5: ANNOUNCEMENTS */}
+          {nav === 'announcements' && (
+            <div className="support-main-card">
+              <h1 style={{ fontSize: '1.375rem', fontWeight: 700, color: '#f8fafc', margin: 0 }}>
+                {t('support.announcements')}
+              </h1>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {[
+                  {
+                    title: 'New High-Tier Commission Rates for PulsePOS Enterprise Referrals',
+                    date: 'October 18, 2026',
+                    body: 'Partners referring multi-branch retail supermarkets now earn 25% recurring monthly revenue on all active terminal subscriptions.',
+                  },
+                  {
+                    title: 'Healora Telemedicine 2.4 Update Live Across All Partner Integrations',
+                    date: 'October 12, 2026',
+                    body: 'The latest release brings sub-second prescription generation and low-bandwidth WebRTC video consultation for rural clinics.',
+                  },
+                ].map((item, idx) => (
+                  <div
+                    key={idx}
+                    style={{
+                      padding: 16,
+                      background: '#152132',
+                      border: '1px solid #203148',
+                      borderRadius: 8,
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <strong style={{ color: '#f1f5f9', fontSize: '0.9375rem' }}>{item.title}</strong>
+                      <span style={{ fontSize: '0.75rem', color: '#64748b' }}>{item.date}</span>
+                    </div>
+                    <p style={{ margin: 0, fontSize: '0.8125rem', color: '#94a3b8', lineHeight: 1.5 }}>
+                      {item.body}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 6: DOWNLOADS */}
+          {nav === 'downloads' && (
+            <div className="support-main-card">
+              <h1 style={{ fontSize: '1.375rem', fontWeight: 700, color: '#f8fafc', margin: 0 }}>
+                {t('support.downloads')}
+              </h1>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {[
+                  {
+                    title: 'PulsePOS Desktop Hardware Agent (v3.2)',
+                    desc: 'Thermal printer driver sync and local barcode scanner daemon for Windows and POSBox.',
+                    size: '14.2 MB',
+                  },
+                  {
+                    title: 'Healora Doctor EMR Tablet Client (v1.9)',
+                    desc: 'Optimized touch interface for Android and iOS consultation tablets.',
+                    size: '28.6 MB',
+                  },
+                  {
+                    title: 'Partner Referral Integration SDK (Python / TypeScript)',
+                    desc: 'Complete source packages with signature calculation and automatic retry handling.',
+                    size: '1.4 MB',
+                  },
+                ].map((dl, idx) => (
+                  <div
+                    key={idx}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '14px 16px',
+                      background: '#152132',
+                      border: '1px solid #203148',
+                      borderRadius: 8,
+                    }}
+                  >
+                    <div>
+                      <strong style={{ color: '#f1f5f9', fontSize: '0.875rem', display: 'block' }}>
+                        {dl.title}
+                      </strong>
+                      <span style={{ color: '#94a3b8', fontSize: '0.75rem' }}>{dl.desc}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                      <span style={{ color: '#64748b', fontSize: '0.75rem' }}>{dl.size}</span>
+                      <button
+                        type="button"
+                        onClick={() => toast(`Downloading ${dl.title}...`)}
+                        className="btn btn--secondary"
+                        style={{ padding: '6px 12px', fontSize: '0.75rem', gap: 6 }}
+                      >
+                        <Download size={13} />
+                        Download
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </main>
       </div>
     </Page>
   );
 }
-export default Support;

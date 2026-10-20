@@ -699,3 +699,246 @@
 
 /* Demo banner stays visible; header and sidebar stick below it (offset measured in DemoBanner). */
 @media (max-width: 860px) { .demo-banner { font-size: var(--text-xs); } }
+
+/* ================================================================== Help & Support Desk (WHMCS / Client-Portal Style) */
+.support-layout {
+  display: grid;
+  grid-template-columns: 290px 1fr;
+  gap: var(--space-5);
+  align-items: start;
+}
+
+@media (max-width: 960px) {
+  .support-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.support-sidebar-card {
+  background: #111a28;
+  border: 1px solid #1e2c40;
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.support-sidebar-header {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #f1f5f9;
+  letter-spacing: -0.01em;
+  margin: 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #1a2738;
+}
+
+.support-ticket-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.support-ticket-item {
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  color: #94a3b8;
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  text-align: left;
+  line-height: 1.4;
+  transition: all 0.15s ease;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+  width: 100%;
+}
+
+.support-ticket-item:hover {
+  background: #162234;
+  color: #f8fafc;
+  border-color: #24354e;
+}
+
+.support-ticket-item.active {
+  background: #192538;
+  color: #38bdf8;
+  border-color: #38bdf8;
+}
+
+.support-nav-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.support-nav-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #94a3b8;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  width: 100%;
+  text-align: left;
+}
+
+.support-nav-item:hover {
+  background: #162234;
+  color: #f8fafc;
+}
+
+.support-nav-item.active {
+  background: #19273c;
+  color: #38bdf8;
+  font-weight: 600;
+  box-shadow: inset 3px 0 0 #38bdf8;
+}
+
+.support-main-card {
+  background: #111a28;
+  border: 1px solid #1e2c40;
+  border-radius: 12px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.support-input-field {
+  width: 100%;
+  padding: 10px 14px;
+  background: #162234;
+  border: 1px solid #283952;
+  border-radius: 8px;
+  color: #f1f5f9;
+  font-size: 0.875rem;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.support-input-field:focus {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+}
+
+.support-select-field {
+  width: 100%;
+  padding: 10px 14px;
+  background: #162234;
+  border: 1px solid #283952;
+  border-radius: 8px;
+  color: #f1f5f9;
+  font-size: 0.875rem;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.support-select-field:focus {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+}
+
+.support-editor-wrap {
+  border: 1px solid #283952;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #141d2c;
+  display: flex;
+  flex-direction: column;
+}
+
+.support-editor-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 3px;
+  padding: 6px 8px;
+  background: #162030;
+  border-bottom: 1px solid #283952;
+}
+
+.support-toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 6px;
+  border-radius: 4px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: #94a3b8;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.1s ease;
+}
+
+.support-toolbar-btn:hover {
+  background: #202d42;
+  color: #ffffff;
+  border-color: #2c3f5c;
+}
+
+.support-toolbar-btn.active {
+  background: #23354e;
+  color: #38bdf8;
+}
+
+.support-editor-textarea {
+  width: 100%;
+  min-height: 200px;
+  padding: 14px 16px;
+  background: #131b2a;
+  border: none;
+  outline: none;
+  color: #f1f5f9;
+  font-family: inherit;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.support-editor-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+  padding: 6px 14px;
+  background: #162030;
+  border-top: 1px solid #202e44;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.support-attachment-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.support-file-input-wrap {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 260px;
+  background: #162234;
+  border: 1px solid #283952;
+  border-radius: 8px;
+  padding: 6px 12px;
+  color: #94a3b8;
+  font-size: 0.8125rem;
+}
