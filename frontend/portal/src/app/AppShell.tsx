@@ -4,12 +4,19 @@ import { AnimatePresence, m } from 'motion/react';
 import * as Popover from '@radix-ui/react-popover';
 import { useTranslation } from 'react-i18next';
 import {
+  Activity,
   ArrowDownToLine,
   Bell,
+  BookOpen,
+  ChevronDown,
+  Download,
+  FolderGit2,
   Home,
   Languages,
   LifeBuoy,
   LogOut,
+  Megaphone,
+  MessageSquarePlus,
   Monitor,
   Moon,
   Sparkles,
@@ -22,7 +29,7 @@ import {
 import { useBrand } from './brand';
 import { useSession } from './session';
 import { setLocale, type Locale } from '../i18n';
-import { useMarkNotificationRead, useNotifications } from '../lib/queries';
+import { useMarkNotificationRead, useMyTickets, useNotifications } from '../lib/queries';
 import { formatRelative } from '../lib/format';
 import { Button, EmptyState, ErrorState, ListSkeleton, Segmented } from '../ui/primitives';
 import { Sheet } from '../ui/overlays';
@@ -57,22 +64,134 @@ function BrandMark({ compact }: { compact?: boolean }) {
 
 function Sidebar() {
   const { t } = useTranslation();
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   const { spring } = usePresets();
+  const [supportOpen, setSupportOpen] = useState(() => pathname.startsWith('/support'));
+  const ticketsQuery = useMyTickets();
+  const ticketCount = ticketsQuery.data?.length ?? 0;
+
+  useEffect(() => {
+    if (pathname.startsWith('/support')) {
+      setSupportOpen(true);
+    }
+  }, [pathname]);
+
+  const searchParams = new URLSearchParams(search);
+  const activeSupportTab = searchParams.get('tab') || 'open';
+
   return (
     <aside className="sidebar">
       <BrandMark />
       <nav aria-label={t('nav.main')}>
         <ul className="nav-list">
           {NAV.map(({ to, key, icon: Icon }) => {
+            const isSupport = key === 'support';
             const active = to === '/' ? pathname === '/' : pathname.startsWith(to);
+
             return (
               <li key={to}>
-                <NavLink to={to} end={to === '/'} className="nav-link">
-                  {active && <m.span layoutId="nav-indicator" className="nav-link__indicator" transition={spring.layout} />}
-                  <Icon size={18} aria-hidden="true" strokeWidth={active ? 2.3 : 1.9} />
-                  <span>{t(`nav.${key}`)}</span>
-                </NavLink>
+                <div style={{ display: 'flex', alignItems: 'center', width: '100%', position: 'relative' }}>
+                  <NavLink
+                    to={to}
+                    end={to === '/'}
+                    className="nav-link"
+                    style={{ flex: 1 }}
+                    onClick={() => {
+                      if (isSupport) setSupportOpen(!supportOpen);
+                    }}
+                  >
+                    {active && <m.span layoutId="nav-indicator" className="nav-link__indicator" transition={spring.layout} />}
+                    <Icon size={18} aria-hidden="true" strokeWidth={active ? 2.3 : 1.9} />
+                    <span>{t(`nav.${key}`)}</span>
+                  </NavLink>
+                  {isSupport && (
+                    <button
+                      type="button"
+                      aria-label="Toggle Support submenu"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setSupportOpen(!supportOpen);
+                      }}
+                      style={{
+                        position: 'absolute',
+                        right: 4,
+                        background: 'transparent',
+                        border: 'none',
+                        color: active ? 'var(--brand)' : 'var(--text-tertiary)',
+                        cursor: 'pointer',
+                        padding: '6px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 2,
+                      }}
+                    >
+                      <ChevronDown
+                        size={14}
+                        style={{
+                          transform: supportOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                          transition: 'transform 0.2s ease',
+                        }}
+                      />
+                    </button>
+                  )}
+                </div>
+
+                {/* Submenu under Support */}
+                {isSupport && supportOpen && (
+                  <ul className="nav-sub-list">
+                    {[
+                      { tab: 'my_tickets', label: t('support.mySupportTickets'), icon: FolderGit2, badge: ticketCount },
+                      { tab: 'announcements', label: t('support.announcements'), icon: Megaphone },
+                      { tab: 'knowledgebase', label: t('support.knowledgebase'), icon: BookOpen },
+                      { tab: 'downloads', label: t('support.downloads'), icon: Download },
+                      { tab: 'network', label: t('support.networkStatus'), icon: Activity, dot: true },
+                      { tab: 'open', label: t('support.openTicket'), icon: MessageSquarePlus },
+                    ].map((sub) => {
+                      const isSubActive = pathname.startsWith('/support') && activeSupportTab === sub.tab;
+                      const SubIcon = sub.icon;
+                      return (
+                        <li key={sub.tab}>
+                          <NavLink
+                            to={`/support?tab=${sub.tab}`}
+                            className={`nav-sub-link ${isSubActive ? 'active' : ''}`}
+                          >
+                            <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+                              <SubIcon size={14} />
+                              <span>{sub.label}</span>
+                            </div>
+                            {sub.badge !== undefined && sub.badge > 0 && (
+                              <span
+                                style={{
+                                  background: isSubActive ? 'var(--brand)' : 'var(--bg-subtle)',
+                                  color: isSubActive ? 'var(--on-brand)' : 'var(--text-muted)',
+                                  fontSize: '0.6875rem',
+                                  fontWeight: 700,
+                                  padding: '1px 6px',
+                                  borderRadius: 10,
+                                }}
+                              >
+                                {sub.badge}
+                              </span>
+                            )}
+                            {sub.dot && (
+                              <span
+                                style={{
+                                  width: 6,
+                                  height: 6,
+                                  borderRadius: '50%',
+                                  background: '#10b981',
+                                  boxShadow: '0 0 6px #10b981',
+                                }}
+                              />
+                            )}
+                          </NavLink>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
               </li>
             );
           })}

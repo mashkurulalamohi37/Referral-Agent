@@ -1,4 +1,5 @@
-import { useState, useRef, type ChangeEvent, type FormEvent } from 'react';
+import { useEffect, useState, useRef, type ChangeEvent, type FormEvent } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   Activity,
@@ -35,8 +36,23 @@ export function Support() {
   const { data: tickets, refetch } = useMyTickets();
   const createMutation = useCreateTicket();
 
-  // Navigation State
-  const [nav, setNav] = useState<SupportNav>('open');
+  // Navigation State synced with URL query (?tab=...)
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlTab = searchParams.get('tab') as SupportNav | null;
+  const [navState, setNavState] = useState<SupportNav>(() => urlTab || 'open');
+
+  useEffect(() => {
+    if (urlTab && urlTab !== navState) {
+      setNavState(urlTab);
+    }
+  }, [urlTab, navState]);
+
+  const nav = urlTab || navState;
+  const setNav = (nextNav: SupportNav) => {
+    setNavState(nextNav);
+    setSearchParams({ tab: nextNav });
+  };
+
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
 
   // Form State
