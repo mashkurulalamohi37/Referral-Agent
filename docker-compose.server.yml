@@ -112,7 +112,7 @@ services:
     restart: unless-stopped
     depends_on:
       api:
-        condition: service_healthy
+        condition: service_started
 
   admin:
     build:
@@ -123,7 +123,7 @@ services:
     restart: unless-stopped
     depends_on:
       api:
-        condition: service_healthy
+        condition: service_started
 
   nginx:
     image: nginx:1.27-alpine
@@ -135,7 +135,7 @@ services:
       - ./deploy/nginx/snippets:/etc/nginx/snippets:ro
     depends_on:
       api:
-        condition: service_healthy
+        condition: service_started
       portal:
         condition: service_started
       admin:
