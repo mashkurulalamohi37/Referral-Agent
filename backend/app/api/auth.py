@@ -10,6 +10,7 @@ from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_authenticated_api_client, get_db_session, require_api_scopes
+from app.catalog import service as catalog_service
 from app.catalog.models import ApiClient
 from app.core.errors import ErrorCode, PlatformError
 from app.identity import service as identity_service
@@ -38,8 +39,12 @@ class LogoutRequest(BaseModel):
 
 
 class HandoffRequest(BaseModel):
-    product_id: uuid.UUID
+    product_id: uuid.UUID | None = None
+    product_slug: str | None = None
     external_user_id: str
+    display_name: str | None = None
+    email: EmailStr | None = None
+    phone: str | None = None
 
 
 class HandoffExchangeRequest(BaseModel):
@@ -127,11 +132,32 @@ async def create_handoff(
     client: Annotated[ApiClient, Depends(require_api_scopes("auth:handoff"))],
     session: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> dict[str, Any]:
-    """Issues a short-lived (60s) single-use handoff token for seamless product SSO."""
+    """Issues a short-lived (60s) single-use handoff token for seamless product SSO with auto-enrollment."""
+    product_id = body.product_id
+    if not product_id and body.product_slug:
+        prod = await catalog_service.get_product_by_slug(session, body.product_slug)
+        if prod:
+            product_id = prod.id
+
+    if not product_id:
+        product_id = client.product_id
+
     token = await identity_service.create_handoff_token(
-        session, product_id=body.product_id, external_user_id=body.external_user_id
+        session,
+        product_id=product_id,
+        external_user_id=body.external_user_id,
+        display_name=body.display_name,
+        email=str(body.email) if body.email else None,
+        phone=body.phone,
     )
-    return {"success": True, "data": {"handoff_token": token, "expires_in": 60}}
+    return {
+        "success": True,
+        "data": {
+            "handoff_token": token,
+            "expires_in": 60,
+            "redirect_url": f"/auth/callback?token={token}",
+        },
+    }
 
 
 @router.post("/handoff/exchange")

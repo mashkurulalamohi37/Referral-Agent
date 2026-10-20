@@ -293,13 +293,39 @@ async def create_handoff_token(
     *,
     product_id: uuid.UUID,
     external_user_id: str,
+    display_name: str | None = None,
+    email: str | None = None,
+    phone: str | None = None,
 ) -> str:
-    """Issues a short-lived (60s) single-use SSO handoff token for a product account."""
+    """Issues a short-lived (60s) single-use SSO handoff token for a product account, auto-enrolling if needed."""
     account = await catalog_service.get_product_account(
         session, product_id=product_id, external_user_id=external_user_id
     )
     if not account:
-        raise PlatformError(ErrorCode.NOT_FOUND, "Product account not found")
+        enroll_result = await enroll_referrer(
+            session,
+            product_id=product_id,
+            external_user_id=external_user_id,
+            display_name=display_name,
+            email=email,
+            phone=phone,
+        )
+        account = await catalog_service.get_product_account_by_id(
+            session, uuid.UUID(enroll_result["product_account_id"])
+        )
+        if not account:
+            raise PlatformError(ErrorCode.NOT_FOUND, "Product account could not be provisioned")
+
+    if account.user_id:
+        try:
+            from app.referrals import service as referrals_service
+            codes = await referrals_service.list_referral_codes(session, user_id=account.user_id)
+            if not codes:
+                await referrals_service.create_referral_code(
+                    session, user_id=account.user_id, product_id=product_id
+                )
+        except Exception:
+            pass
 
     plain_token = f"hnd_{generate_secure_token(32)}"
     token_h = hash_token(plain_token)
