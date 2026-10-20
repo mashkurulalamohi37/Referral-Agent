@@ -22,6 +22,7 @@ from app.core.security import (
     verify_password,
 )
 from app.identity import service as identity_service
+import app.referrals.models  # noqa: F401
 
 
 @pytest.fixture
@@ -294,3 +295,31 @@ async def test_referrer_enrollment_workflow(async_session: AsyncSession) -> None
     )
     assert second_enroll["is_new_account"] is False
     assert second_enroll["user_id"] == result["user_id"]
+
+
+async def test_portal_user_registration_workflow(async_session: AsyncSession) -> None:
+    from app.referrals import service as referrals_service
+
+    # Create user as done in /v1/auth/register
+    user = await identity_service.create_user(
+        async_session,
+        display_name="Ashiqur Rahman",
+        email="ashiq@example.com",
+        password="ValidPassword123!",
+        phone="+8801712345678",
+        roles=["PARTNER", "CUSTOMER"],
+    )
+    assert user.id is not None
+    assert user.email == "ashiq@example.com"
+    role_names = [r.role for r in user.roles]
+    assert "PARTNER" in role_names
+
+    # Create referral code
+    code = await referrals_service.create_referral_code(async_session, user_id=user.id)
+    assert code.code is not None
+
+    # Authenticate with credentials
+    auth_user = await identity_service.authenticate_user_password(
+        async_session, email="ashiq@example.com", password="ValidPassword123!"
+    )
+    assert auth_user.id == user.id

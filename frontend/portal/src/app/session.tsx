@@ -12,6 +12,7 @@ interface SessionApi {
   demo: boolean;
   me: Me | undefined;
   signIn: (email: string, password: string) => Promise<void>;
+  signUp: (data: { displayName: string; email: string; password: string; phone?: string }) => Promise<void>;
   exchangeHandoff: (token: string) => Promise<void>;
   startDemo: () => void;
   signOut: () => Promise<void>;
@@ -45,6 +46,24 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const signIn = useCallback(
     async (email: string, password: string) => {
       const tokens = await api<TokenPair>('/v1/auth/login', { method: 'POST', body: { email, password }, anonymous: true });
+      setTokens(tokens);
+      await qc.invalidateQueries();
+    },
+    [qc],
+  );
+
+  const signUp = useCallback(
+    async (data: { displayName: string; email: string; password: string; phone?: string }) => {
+      const tokens = await api<TokenPair>('/v1/auth/register', {
+        method: 'POST',
+        body: {
+          display_name: data.displayName,
+          email: data.email,
+          password: data.password,
+          phone: data.phone || null,
+        },
+        anonymous: true,
+      });
       setTokens(tokens);
       await qc.invalidateQueries();
     },
@@ -85,8 +104,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [qc]);
 
   const value = useMemo(
-    () => ({ signedIn, demo, me, signIn, exchangeHandoff, startDemo, signOut }),
-    [signedIn, demo, me, signIn, exchangeHandoff, startDemo, signOut],
+    () => ({ signedIn, demo, me, signIn, signUp, exchangeHandoff, startDemo, signOut }),
+    [signedIn, demo, me, signIn, signUp, exchangeHandoff, startDemo, signOut],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

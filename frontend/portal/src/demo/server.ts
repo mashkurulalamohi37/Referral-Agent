@@ -330,6 +330,24 @@ export async function demoFetch<T>(path: string, options: { method?: string; bod
       t.messages.push(newMsg);
       return delay(newMsg as T);
     }
+    case route === 'POST /v1/auth/register': {
+      state.me.display_name = String(body.display_name ?? 'New Partner');
+      state.me.email = String(body.email ?? 'partner@example.com');
+      state.me.phone = body.phone ? String(body.phone) : null;
+      return delay({
+        access_token: 'demo-access-token',
+        refresh_token: 'demo-refresh-token',
+        token_type: 'Bearer',
+        expires_in: 3600,
+      } as T);
+    }
+    case route === 'POST /v1/auth/login':
+      return delay({
+        access_token: 'demo-access-token',
+        refresh_token: 'demo-refresh-token',
+        token_type: 'Bearer',
+        expires_in: 3600,
+      } as T);
     case route === 'POST /v1/auth/logout':
       return delay({} as T);
     default:

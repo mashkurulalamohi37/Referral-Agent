@@ -5,15 +5,23 @@ from __future__ import annotations
 import uuid
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Request
-from pydantic import BaseModel, EmailStr
+from fastapi import APIRouter, Depends, Request, status
+from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_authenticated_api_client, get_db_session, require_api_scopes
 from app.catalog.models import ApiClient
+from app.core.errors import ErrorCode, PlatformError
 from app.identity import service as identity_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+class RegisterRequest(BaseModel):
+    display_name: str = Field(min_length=2, max_length=120)
+    email: EmailStr
+    password: str = Field(min_length=6, max_length=128)
+    phone: str | None = Field(default=None, max_length=32)
 
 
 class LoginRequest(BaseModel):
@@ -36,6 +44,42 @@ class HandoffRequest(BaseModel):
 
 class HandoffExchangeRequest(BaseModel):
     handoff_token: str
+
+
+@router.post("/register", status_code=status.HTTP_201_CREATED)
+async def register(
+    body: RegisterRequest,
+    request: Request,
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> dict[str, Any]:
+    """Registers a new partner account, generates default referral code, and returns JWT tokens."""
+    clean_email = str(body.email).lower().strip()
+    existing = await identity_service.get_user_by_email(session, clean_email)
+    if existing:
+        raise PlatformError(
+            ErrorCode.CONFLICT,
+            f"An account with email '{clean_email}' already exists",
+        )
+
+    user = await identity_service.create_user(
+        session,
+        display_name=body.display_name.strip(),
+        email=clean_email,
+        password=body.password,
+        phone=body.phone,
+        roles=["PARTNER", "CUSTOMER"],
+    )
+
+    try:
+        from app.referrals import service as referrals_service
+        await referrals_service.create_referral_code(session, user_id=user.id)
+    except Exception:
+        pass
+
+    tokens = await identity_service.issue_auth_tokens(
+        session, user=user, settings=request.app.state.settings
+    )
+    return {"success": True, "data": tokens}
 
 
 @router.post("/login")

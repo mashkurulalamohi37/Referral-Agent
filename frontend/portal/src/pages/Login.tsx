@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { m } from 'motion/react';
 import { useTranslation } from 'react-i18next';
-import { AlertCircle, PlayCircle, Sparkles } from 'lucide-react';
+import { AlertCircle, LogIn, PlayCircle, Sparkles, UserPlus } from 'lucide-react';
 import { useSession } from '../app/session';
 import { useBrand } from '../app/brand';
 import { ApiError } from '../lib/http';
@@ -11,12 +11,15 @@ import { usePresets } from '../ui/motion';
 
 export function Login() {
   const { t } = useTranslation();
-  const { signedIn, signIn, startDemo } = useSession();
+  const { signedIn, signIn, signUp, startDemo } = useSession();
   const { brandName } = useBrand();
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as { from?: string } | null)?.from ?? '/';
+  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+  const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -29,14 +32,40 @@ export function Login() {
     setError(null);
     setBusy(true);
     try {
-      await signIn(email.trim(), password);
+      if (mode === 'signup') {
+        await signUp({
+          displayName: displayName.trim(),
+          email: email.trim(),
+          password,
+          phone: phone.trim() || undefined,
+        });
+      } else {
+        await signIn(email.trim(), password);
+      }
       navigate(from, { replace: true });
     } catch (err) {
-      setError(err instanceof ApiError && err.status === 401 ? t('auth.invalid') : err instanceof ApiError && err.isNetwork ? t('errors.network') : t('errors.generic'));
+      if (err instanceof ApiError) {
+        if (err.status === 401) {
+          setError(t('auth.invalid'));
+        } else if (err.status === 409) {
+          setError(err.message || 'An account with this email already exists.');
+        } else if (err.isNetwork) {
+          setError(t('errors.network'));
+        } else {
+          setError(err.message || t('errors.generic'));
+        }
+      } else {
+        setError(t('errors.generic'));
+      }
     } finally {
       setBusy(false);
     }
   };
+
+  const isSubmitDisabled =
+    mode === 'signup'
+      ? !displayName.trim() || !email.trim() || !password || password.length < 6
+      : !email.trim() || !password;
 
   return (
     <main className="auth-wrap" id="main">
@@ -49,24 +78,163 @@ export function Login() {
               </span>
               <span>{brandName}</span>
             </div>
-            <div>
-              <h1 className="page-title">{t('auth.title')}</h1>
-              <p className="page-subtitle">{t('auth.subtitle')}</p>
+
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: 6,
+                background: 'var(--surface-hover, #f1f5f9)',
+                padding: 4,
+                borderRadius: 'var(--radius, 8px)',
+              }}
+              role="tablist"
+              aria-label="Auth mode"
+            >
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mode === 'signin'}
+                onClick={() => {
+                  setMode('signin');
+                  setError(null);
+                }}
+                className={`btn ${mode === 'signin' ? 'btn--secondary' : 'btn--ghost'}`}
+                style={{
+                  fontWeight: mode === 'signin' ? 600 : 400,
+                  background: mode === 'signin' ? 'var(--surface, #ffffff)' : 'transparent',
+                  boxShadow: mode === 'signin' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                  border: 'none',
+                  padding: '8px 12px',
+                  fontSize: '0.875rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                }}
+              >
+                <LogIn size={15} aria-hidden="true" />
+                {t('auth.signInTab')}
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mode === 'signup'}
+                onClick={() => {
+                  setMode('signup');
+                  setError(null);
+                }}
+                className={`btn ${mode === 'signup' ? 'btn--secondary' : 'btn--ghost'}`}
+                style={{
+                  fontWeight: mode === 'signup' ? 600 : 400,
+                  background: mode === 'signup' ? 'var(--surface, #ffffff)' : 'transparent',
+                  boxShadow: mode === 'signup' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                  border: 'none',
+                  padding: '8px 12px',
+                  fontSize: '0.875rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                }}
+              >
+                <UserPlus size={15} aria-hidden="true" />
+                {t('auth.signUpTab')}
+              </button>
             </div>
+
+            <div>
+              <h1 className="page-title">{mode === 'signup' ? t('auth.signUpTitle') : t('auth.title')}</h1>
+              <p className="page-subtitle">{mode === 'signup' ? t('auth.signUpSubtitle') : t('auth.subtitle')}</p>
+            </div>
+
             <form className="stack" style={{ gap: 14 }} onSubmit={onSubmit} noValidate>
+              {mode === 'signup' && (
+                <div className="field">
+                  <label className="field__label" htmlFor="displayName">{t('auth.fullName')}</label>
+                  <input
+                    id="displayName"
+                    className="input"
+                    type="text"
+                    autoComplete="name"
+                    required
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                  />
+                </div>
+              )}
+
               <div className="field">
                 <label className="field__label" htmlFor="email">{t('auth.email')}</label>
-                <input id="email" className="input" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+                <input
+                  id="email"
+                  className="input"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
               </div>
+
+              {mode === 'signup' && (
+                <div className="field">
+                  <label className="field__label" htmlFor="phone">{t('auth.phone')}</label>
+                  <input
+                    id="phone"
+                    className="input"
+                    type="tel"
+                    autoComplete="tel"
+                    placeholder="+8801700000000"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                  />
+                </div>
+              )}
+
               <div className="field">
                 <label className="field__label" htmlFor="password">{t('auth.password')}</label>
-                <input id="password" className="input" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+                <input
+                  id="password"
+                  className="input"
+                  type="password"
+                  autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+                  required
+                  minLength={6}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
               </div>
+
               {error && <Notice tone="danger" icon={AlertCircle}>{error}</Notice>}
-              <Button type="submit" size="lg" block loading={busy} disabled={!email || !password}>
-                {busy ? t('auth.submitting') : t('auth.submit')}
+
+              <Button type="submit" size="lg" block loading={busy} disabled={isSubmitDisabled}>
+                {busy
+                  ? mode === 'signup'
+                    ? t('auth.signUpSubmitting')
+                    : t('auth.submitting')
+                  : mode === 'signup'
+                    ? t('auth.signUpSubmit')
+                    : t('auth.submit')}
               </Button>
+
+              <div style={{ textAlign: 'center', marginTop: 4 }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode(mode === 'signin' ? 'signup' : 'signin');
+                    setError(null);
+                  }}
+                  className="btn btn--ghost"
+                  style={{ fontSize: '0.85rem', color: 'var(--brand)' }}
+                >
+                  {mode === 'signin' ? t('auth.needAccount') : t('auth.alreadyAccount')}
+                </button>
+              </div>
             </form>
+
             <p className="xsmall muted">{t('auth.fromProduct')}</p>
             <Button
               variant="ghost"
