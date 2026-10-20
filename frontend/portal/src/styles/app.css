@@ -799,10 +799,11 @@
 }
 
 .support-nav-item.active {
-  background: #19273c;
+  background: rgba(14, 165, 233, 0.12);
+  border: 1.5px solid #0284c7;
   color: #38bdf8;
   font-weight: 600;
-  box-shadow: inset 3px 0 0 #38bdf8;
+  box-shadow: 0 0 12px rgba(14, 165, 233, 0.12);
 }
 
 .support-main-card {
