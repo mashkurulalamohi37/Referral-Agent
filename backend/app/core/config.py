@@ -63,6 +63,9 @@ class Settings(BaseSettings):
     @classmethod
     def _split_currencies(cls, data: object) -> object:
         if isinstance(data, dict):
+            for k, v in list(data.items()):
+                if isinstance(v, str) and not v.strip():
+                    data[k] = None
             raw = data.get("enabled_currencies")
             if isinstance(raw, str):
                 data["enabled_currencies"] = tuple(
