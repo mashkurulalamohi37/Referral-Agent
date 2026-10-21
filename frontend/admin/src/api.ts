@@ -128,6 +128,7 @@ export interface SimulationInput {
   partner_type: string | null;
   billing_reason: string;
   amount_net_paid: number;
+  sale_count?: number;
   currency: string;
 }
 
@@ -138,9 +139,31 @@ export interface SimulationResult {
   commission_amount_minor: number;
   rate_bps: number;
   specificity_score: number;
+  sale_count?: number;
+  tier_schedule?: any;
   reward_split: Record<string, number>;
   commission_type?: string;
   max_commission_minor?: number | null;
+}
+
+export interface CommissionRule {
+  id: string;
+  rule_name: string;
+  product_id: string | null;
+  plan_code?: string | null;
+  partner_type: string | null;
+  commission_type: string;
+  rate_bps: number;
+  fixed_amount_minor: number;
+  tier_schedule?: any;
+  currency: string;
+  min_net_paid_minor?: number;
+  max_commission_minor?: number | null;
+  confirmation_days: number;
+  priority: number;
+  status: string;
+  created_at: string;
+  updated_at: string;
 }
 
 /* ------------------------------------------------------------------ endpoints */
@@ -154,6 +177,17 @@ export const api = {
   events: () => adminApi<AdminEvent[]>('/v1/admin/events'),
   replayEvent: (id: string) => adminApi<{ status?: string }>(`/v1/admin/events/${id}/replay`, { method: 'POST' }),
   auditLogs: (entityType?: string) => adminApi<AuditEntry[]>(`/v1/admin/audit-logs${entityType ? `?entity_type=${encodeURIComponent(entityType)}` : ''}`),
+  rules: (params?: { product_id?: string; partner_type?: string; status?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.product_id) q.set('product_id', params.product_id);
+    if (params?.partner_type) q.set('partner_type', params.partner_type);
+    if (params?.status) q.set('status', params.status);
+    const qs = q.toString();
+    return adminApi<CommissionRule[]>(`/v1/admin/rules${qs ? `?${qs}` : ''}`);
+  },
+  createRule: (data: Partial<CommissionRule>) => adminApi<CommissionRule>('/v1/admin/rules', { method: 'POST', body: data }),
+  updateRule: (id: string, data: Partial<CommissionRule>) => adminApi<CommissionRule>(`/v1/admin/rules/${id}`, { method: 'PATCH', body: data }),
+  deleteRule: (id: string) => adminApi<{ success: boolean }>(`/v1/admin/rules/${id}`, { method: 'DELETE' }),
   simulate: (input: SimulationInput) => adminApi<SimulationResult>('/v1/admin/commission-rules/simulate', { method: 'POST', body: input }),
 };
 

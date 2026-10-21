@@ -189,15 +189,39 @@ from app.core.money import apply_bps
 # ---------------------------------------------------------------- Commission Math (§9.3, I3)
 
 
-def calculate_commission_amount(amount_net_paid: int, rule: CommissionRule) -> int:
-    """Calculates commission amount using integer minor units and single ROUND_HALF_UP (Invariant I3)."""
-    if amount_net_paid < rule.min_net_paid_minor:
+def calculate_commission_amount(
+    amount_net_paid: int,
+    rule: CommissionRule,
+    *,
+    sale_count: int = 1,
+) -> int:
+    """Calculates commission amount using integer minor units, progressive tiers, and single ROUND_HALF_UP (Invariant I3)."""
+    min_net_paid = rule.min_net_paid_minor or 0
+    if amount_net_paid < min_net_paid:
         return 0
 
     if rule.commission_type == "PERCENTAGE":
         commission = apply_bps(amount_net_paid, rule.rate_bps)
     elif rule.commission_type == "FIXED":
         commission = rule.fixed_amount_minor
+    elif rule.commission_type == "TIERED" and rule.tier_schedule:
+        # Match progressive volume tier schedule
+        tiers = rule.tier_schedule.get("tiers", [])
+        matched_tier = None
+        for t in tiers:
+            min_c = t.get("min_count", 1)
+            max_c = t.get("max_count")
+            if sale_count >= min_c and (max_c is None or sale_count <= max_c):
+                matched_tier = t
+                break
+
+        tier_rate = matched_tier.get("rate_bps", rule.rate_bps) if matched_tier else rule.rate_bps
+        tier_fixed = matched_tier.get("fixed_amount_minor", 0) if matched_tier else 0
+        milestone_bonus = 0
+        if matched_tier and sale_count == matched_tier.get("min_count"):
+            milestone_bonus = matched_tier.get("fixed_bonus_minor", 0)
+
+        commission = apply_bps(amount_net_paid, tier_rate) + tier_fixed + milestone_bonus
     else:
         commission = 0
 
@@ -257,13 +281,25 @@ async def process_payment_commission(
     if not attr or attr.status not in ("ATTRIBUTED", "TRIALING", "CONVERTED", "ACTIVE"):
         return None  # No referral attribution for this user
 
-    # 3. Resolve commission rule
+    # 3. Resolve commission rule with agent_type matching and volume sale count
+    from app.identity.models import User
+    referrer_res = await session.execute(select(User).where(User.id == attr.referrer_user_id))
+    referrer_user = referrer_res.scalar_one_or_none()
+    partner_type = referrer_user.agent_type if referrer_user else None
+
+    sale_count_stmt = select(func.count(Commission.id)).where(
+        Commission.referrer_user_id == attr.referrer_user_id,
+        Commission.product_id == product_id,
+    )
+    sale_count = int((await session.execute(sale_count_stmt)).scalar() or 0) + 1
+
     earned_time = paid_at or clock.now()
     rule = await resolve_commission_rule(
         session,
         product_id=product_id,
         plan_code=plan_code,
         partner_id=attr.referrer_user_id,
+        partner_type=partner_type,
         campaign_id=attr.campaign_id,
         billing_reason=billing_reason,
         paid_at=earned_time,
@@ -279,7 +315,7 @@ async def process_payment_commission(
             return None
 
     # 4. Calculate commission
-    amount = calculate_commission_amount(amount_net_paid, rule)
+    amount = calculate_commission_amount(amount_net_paid, rule, sale_count=sale_count)
     if amount <= 0:
         return None
 
@@ -291,6 +327,8 @@ async def process_payment_commission(
         "amount_net_paid": amount_net_paid,
         "rate_bps": rule.rate_bps,
         "commission_type": rule.commission_type,
+        "sale_number": sale_count,
+        "agent_type": partner_type,
         "confirmation_days": rule.confirmation_days,
         "reward_split": rule.reward_split,
         "earned_at": earned_time.isoformat(),
@@ -512,4 +550,107 @@ async def get_all_commissions(
         stmt = stmt.where(Commission.product_id == product_id)
     res = await session.execute(stmt)
     return list(res.scalars().all())
+
+
+# ---------------------------------------------------------------- Dynamic Rules CRUD
+
+
+async def list_commission_rules(
+    session: AsyncSession,
+    *,
+    product_id: uuid.UUID | None = None,
+    partner_type: str | None = None,
+    status: str | None = None,
+    limit: int = 100,
+    offset: int = 0,
+) -> list[CommissionRule]:
+    """Lists commission rules with optional filtering."""
+    stmt = select(CommissionRule)
+    if product_id:
+        stmt = stmt.where(CommissionRule.product_id == product_id)
+    if partner_type:
+        stmt = stmt.where(CommissionRule.partner_type == partner_type)
+    if status:
+        stmt = stmt.where(CommissionRule.status == status)
+    stmt = stmt.order_by(CommissionRule.priority.desc(), CommissionRule.created_at.desc()).limit(limit).offset(offset)
+    res = await session.execute(stmt)
+    return list(res.scalars().all())
+
+
+async def get_commission_rule_by_id(
+    session: AsyncSession,
+    rule_id: uuid.UUID,
+) -> CommissionRule | None:
+    """Retrieves a single commission rule by ID."""
+    stmt = select(CommissionRule).where(CommissionRule.id == rule_id)
+    res = await session.execute(stmt)
+    return res.scalar_one_or_none()
+
+
+async def update_commission_rule(
+    session: AsyncSession,
+    rule_id: uuid.UUID,
+    *,
+    rule_name: str | None = None,
+    rate_bps: int | None = None,
+    fixed_amount_minor: int | None = None,
+    commission_type: str | None = None,
+    tier_schedule: dict[str, Any] | None = None,
+    status: str | None = None,
+    priority: int | None = None,
+    confirmation_days: int | None = None,
+    partner_type: str | None = None,
+    min_net_paid_minor: int | None = None,
+    max_commission_minor: int | None = None,
+) -> CommissionRule:
+    """Updates an existing dynamic commission rule."""
+    rule = await get_commission_rule_by_id(session, rule_id)
+    if not rule:
+        raise PlatformError(ErrorCode.NOT_FOUND, f"Commission rule '{rule_id}' not found")
+
+    if rule_name is not None:
+        rule.rule_name = rule_name.strip()
+    if rate_bps is not None:
+        rule.rate_bps = rate_bps
+    if fixed_amount_minor is not None:
+        rule.fixed_amount_minor = fixed_amount_minor
+    if commission_type is not None:
+        rule.commission_type = commission_type
+    if tier_schedule is not None:
+        rule.tier_schedule = tier_schedule
+    if status is not None:
+        rule.status = status
+    if priority is not None:
+        rule.priority = priority
+    if confirmation_days is not None:
+        rule.confirmation_days = confirmation_days
+    if partner_type is not None:
+        rule.partner_type = partner_type if partner_type != "ALL" else None
+    if min_net_paid_minor is not None:
+        rule.min_net_paid_minor = min_net_paid_minor
+    if max_commission_minor is not None:
+        rule.max_commission_minor = max_commission_minor
+
+    rule.updated_at = clock.now()
+    session.add(rule)
+    await session.flush()
+    return rule
+
+
+async def delete_commission_rule(
+    session: AsyncSession,
+    rule_id: uuid.UUID,
+) -> bool:
+    """Soft-deletes or archives a commission rule."""
+    rule = await get_commission_rule_by_id(session, rule_id)
+    if not rule:
+        raise PlatformError(ErrorCode.NOT_FOUND, f"Commission rule '{rule_id}' not found")
+
+    rule.status = "ARCHIVED"
+    rule.effective_until = clock.now()
+    rule.updated_at = clock.now()
+    session.add(rule)
+    await session.flush()
+    return True
+
 

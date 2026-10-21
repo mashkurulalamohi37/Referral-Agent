@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { AnimatePresence, m } from 'motion/react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { BellRing, Camera, FileCheck2, Lock, Upload } from 'lucide-react';
+import { BellRing, Building2, Camera, Check, FileCheck2, Lock, Upload, User as UserIcon } from 'lucide-react';
 import { useSession } from '../app/session';
 import { useBrand } from '../app/brand';
 import { setLocale, type Locale } from '../i18n';
@@ -130,6 +130,54 @@ export function Account() {
   const { me } = useSession();
   const { scheme, setScheme } = useBrand();
   const { hash } = useLocation();
+  const qc = useQueryClient();
+  const { toast } = useToast();
+
+  const [displayName, setDisplayName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [agentType, setAgentType] = useState<'INDIVIDUAL' | 'COMPANY'>('INDIVIDUAL');
+  const [companyName, setCompanyName] = useState('');
+  const [tradeLicense, setTradeLicense] = useState('');
+  const [taxId, setTaxId] = useState('');
+  const [representativeDesignation, setRepresentativeDesignation] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (me) {
+      setDisplayName(me.display_name ?? '');
+      setPhone(me.phone ?? '');
+      setAgentType((me.agent_type as 'INDIVIDUAL' | 'COMPANY') || 'INDIVIDUAL');
+      setCompanyName(me.company_name ?? '');
+      setTradeLicense(me.trade_license_number ?? '');
+      setTaxId(me.tax_identification_number ?? '');
+      setRepresentativeDesignation(me.representative_designation ?? '');
+    }
+  }, [me]);
+
+  const onSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await api('/v1/me', {
+        method: 'PATCH',
+        body: {
+          display_name: displayName,
+          phone: phone || null,
+          agent_type: agentType,
+          company_name: agentType === 'COMPANY' ? companyName : null,
+          trade_license_number: agentType === 'COMPANY' ? tradeLicense : null,
+          tax_identification_number: agentType === 'COMPANY' ? taxId : null,
+          representative_designation: agentType === 'COMPANY' ? representativeDesignation : null,
+        },
+      });
+      await qc.invalidateQueries({ queryKey: keys.me });
+      toast(t('account.profileSaved'));
+    } catch {
+      toast(t('errors.generic'), 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   useEffect(() => {
     if (hash) document.getElementById(hash.slice(1))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -141,26 +189,134 @@ export function Account() {
         <div className="stack" style={{ gap: 20 }}>
           <Card aria-labelledby="profile-title">
             <CardHeader id="profile-title" title={t('account.profile')} />
-            <div className="card__body stack" style={{ gap: 14 }}>
+            <form onSubmit={onSaveProfile} className="card__body stack" style={{ gap: 16 }}>
               {!me ? (
                 <>
+                  <Skeleton height={44} />
                   <Skeleton height={44} />
                   <Skeleton height={44} />
                 </>
               ) : (
                 <>
-                  <div className="field">
-                    <span className="field__label">{t('account.name')}</span>
-                    <span>{me.display_name ?? '—'}</span>
+                  <div className="stack" style={{ gap: 6 }}>
+                    <span className="field__label">{t('account.agentType')}</span>
+                    <Segmented<'INDIVIDUAL' | 'COMPANY'>
+                      id="acct-agent-type"
+                      label={t('account.agentType')}
+                      value={agentType}
+                      onChange={setAgentType}
+                      options={[
+                        {
+                          value: 'INDIVIDUAL',
+                          label: (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                              <UserIcon size={14} />
+                              {t('account.individual')}
+                            </span>
+                          ),
+                        },
+                        {
+                          value: 'COMPANY',
+                          label: (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                              <Building2 size={14} />
+                              {t('account.company')}
+                            </span>
+                          ),
+                        },
+                      ]}
+                    />
+                    <span className="field__hint">{t('account.agentTypeHint')}</span>
                   </div>
+
+                  {agentType === 'COMPANY' && (
+                    <div className="stack" style={{ gap: 12, padding: '12px 14px', borderRadius: 'var(--radius-md)', background: 'var(--bg-subtle)', border: '1px solid var(--border-subtle)' }}>
+                      <p className="small strong" style={{ color: 'var(--brand)' }}>{t('account.companyDetails')}</p>
+                      
+                      <div className="field">
+                        <label className="field__label" htmlFor="company-name">{t('account.companyName')}</label>
+                        <input
+                          id="company-name"
+                          className="input"
+                          value={companyName}
+                          onChange={(e) => setCompanyName(e.target.value)}
+                          placeholder="e.g. Acme Tech Solutions Ltd."
+                          required={agentType === 'COMPANY'}
+                        />
+                      </div>
+
+                      <div className="grid grid-2" style={{ gap: 10 }}>
+                        <div className="field">
+                          <label className="field__label" htmlFor="trade-license">{t('account.tradeLicense')}</label>
+                          <input
+                            id="trade-license"
+                            className="input"
+                            value={tradeLicense}
+                            onChange={(e) => setTradeLicense(e.target.value)}
+                            placeholder="e.g. TRAD/DNCC/12345/2026"
+                          />
+                        </div>
+
+                        <div className="field">
+                          <label className="field__label" htmlFor="tax-id">{t('account.taxId')}</label>
+                          <input
+                            id="tax-id"
+                            className="input"
+                            value={taxId}
+                            onChange={(e) => setTaxId(e.target.value)}
+                            placeholder="e.g. 123456789012"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="field">
+                        <label className="field__label" htmlFor="rep-desig">{t('account.designation')}</label>
+                        <input
+                          id="rep-desig"
+                          className="input"
+                          value={representativeDesignation}
+                          onChange={(e) => setRepresentativeDesignation(e.target.value)}
+                          placeholder="e.g. Managing Director / Partner"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="field">
+                    <label className="field__label" htmlFor="display-name">{t('account.name')}</label>
+                    <input
+                      id="display-name"
+                      className="input"
+                      value={displayName}
+                      onChange={(e) => setDisplayName(e.target.value)}
+                      placeholder="Your full name"
+                    />
+                  </div>
+
+                  <div className="field">
+                    <label className="field__label" htmlFor="phone-number">{t('account.phone')}</label>
+                    <input
+                      id="phone-number"
+                      className="input"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="e.g. +8801700000000"
+                    />
+                  </div>
+
                   <div className="field">
                     <span className="field__label">{t('account.email')}</span>
-                    <span>{me.email ?? '—'}</span>
+                    <input className="input" value={me.email ?? '—'} disabled />
                     <span className="field__hint">{t('account.emailHint')}</span>
                   </div>
+
+                  <Button type="submit" loading={saving} style={{ marginTop: 4 }}>
+                    <Check size={16} style={{ marginRight: 6 }} />
+                    {t('account.saveProfile')}
+                  </Button>
                 </>
               )}
-            </div>
+            </form>
           </Card>
 
           <Card aria-labelledby="prefs-title">

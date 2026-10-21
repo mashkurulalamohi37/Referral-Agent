@@ -53,7 +53,7 @@ export function Support() {
   // Form State
   const [subject, setSubject] = useState('');
   const [department, setDepartment] = useState('Technical Support');
-  const [relatedService, setRelatedService] = useState<'pulsepos' | 'healora' | 'none'>('pulsepos');
+  const [relatedService, setRelatedService] = useState<'pulsepos' | 'doctor-chamber' | 'ecommerce' | 'pharmacy-pos' | 'healora' | 'none'>('pulsepos');
   const [priority, setPriority] = useState<'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'>('MEDIUM');
   const [message, setMessage] = useState('');
   const [isPreview, setIsPreview] = useState(false);
@@ -325,8 +325,10 @@ export function Support() {
                       value={relatedService}
                       onChange={(e) => setRelatedService(e.target.value as any)}
                     >
-                      <option value="pulsepos">{t('support.servicePulsepos')}</option>
-                      <option value="healora">{t('support.serviceHealora')}</option>
+                      <option value="pulsepos">PulsePOS</option>
+                      <option value="doctor-chamber">Doctor Chamber</option>
+                      <option value="ecommerce">E-commerce</option>
+                      <option value="pharmacy-pos">Pharmacy POS</option>
                       <option value="none">{t('support.serviceNone')}</option>
                     </select>
                   </div>
@@ -1004,9 +1006,14 @@ export function Support() {
                     body: 'Partners referring multi-branch retail supermarkets now earn 25% recurring monthly revenue on all active terminal subscriptions.',
                   },
                   {
-                    title: 'Healora Telemedicine 2.4 Update Live Across All Partner Integrations',
+                    title: 'Doctor Chamber 2.4 Update Live Across All Partner Integrations',
                     date: 'October 12, 2026',
                     body: 'The latest release brings sub-second prescription generation and low-bandwidth WebRTC video consultation for rural clinics.',
+                  },
+                  {
+                    title: 'Pharmacy POS & E-Commerce Referral Tracks Launched',
+                    date: 'October 21, 2026',
+                    body: 'Specialist partners can now refer medical dispensaries and multi-vendor web stores with progressive sales tiers.',
                   },
                 ].map((item, idx) => (
                   <div
@@ -1045,9 +1052,14 @@ export function Support() {
                     size: '14.2 MB',
                   },
                   {
-                    title: 'Healora Doctor EMR Tablet Client (v1.9)',
+                    title: 'Doctor Chamber Tablet Client (v1.9)',
                     desc: 'Optimized touch interface for Android and iOS consultation tablets.',
                     size: '28.6 MB',
+                  },
+                  {
+                    title: 'Pharmacy POS Inventory Sync Daemon (v2.1)',
+                    desc: 'Medicine batch barcode sync and automated drug interaction checker.',
+                    size: '18.4 MB',
                   },
                   {
                     title: 'Partner Referral Integration SDK (Python / TypeScript)',

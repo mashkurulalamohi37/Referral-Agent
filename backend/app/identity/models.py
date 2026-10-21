@@ -25,6 +25,11 @@ class User(Base, UUIDPrimaryKey, Timestamps):
     time_zone: Mapped[str] = mapped_column(String(64), default="Asia/Dhaka", nullable=False)
     status: Mapped[str] = mapped_column(String(32), default="ACTIVE", nullable=False)
     kyc_status: Mapped[str] = mapped_column(String(32), default="NONE", nullable=False)
+    agent_type: Mapped[str] = mapped_column(String(32), default="INDIVIDUAL", nullable=False)
+    company_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    trade_license_number: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    tax_identification_number: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    representative_designation: Mapped[str | None] = mapped_column(String(128), nullable=True)
     totp_secret_enc: Mapped[str | None] = mapped_column(Text, nullable=True)
     deleted_at: Mapped[datetime | None] = mapped_column(nullable=True)
 

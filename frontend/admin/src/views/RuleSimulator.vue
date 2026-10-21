@@ -13,8 +13,10 @@
         <div class="field">
           <label class="field__label" for="sim-product">Product</label>
           <select id="sim-product" v-model="form.product" class="admin-select">
-            <option value="healora">Healora</option>
-            <option value="pulsepos">PulsePOS</option>
+            <option value="pulsepos">PulsePOS Enterprise</option>
+            <option value="doctor-chamber">Doctor Chamber</option>
+            <option value="ecommerce">E-Commerce Platform</option>
+            <option value="pharmacy-pos">Pharmacy POS</option>
           </select>
         </div>
         <div class="field">
@@ -29,11 +31,16 @@
         <div class="field">
           <label class="field__label" for="sim-partner">Partner type</label>
           <select id="sim-partner" v-model="form.partnerType" class="admin-select">
-            <option value="CUSTOMER">Customer</option>
-            <option value="AFFILIATE">Affiliate</option>
-            <option value="AGENCY">Agency</option>
-            <option value="RESELLER">Reseller</option>
+            <option value="INDIVIDUAL">Individual Agent (ব্যক্তি)</option>
+            <option value="COMPANY">Company / Agency (প্রতিষ্ঠান)</option>
+            <option value="AFFILIATE">Affiliate Partner</option>
+            <option value="RESELLER">Corporate Reseller</option>
           </select>
+        </div>
+        <div class="field">
+          <label class="field__label" for="sim-sale-count">Sale number (for volume tier evaluation)</label>
+          <input id="sim-sale-count" v-model.number="form.saleCount" type="number" min="1" class="admin-input num-mono" />
+          <span class="field__hint">e.g. 1 for first sale, 51 for milestone bonus tier.</span>
         </div>
         <div class="field">
           <label class="field__label" for="sim-amount">Net amount paid (৳)</label>
@@ -74,7 +81,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import StateBlock from '../components/StateBlock.vue';
 import { api, formatMoney, type SimulationResult } from '../api';
 
-const form = reactive({ product: 'healora', billingReason: 'initial', partnerType: 'CUSTOMER', amount: '2000' });
+const form = reactive({ product: 'pulsepos', billingReason: 'initial', partnerType: 'INDIVIDUAL', amount: '20000', saleCount: 1 });
 const result = ref<SimulationResult | null>(null);
 const resultKey = ref(0);
 const error = ref<unknown>(null);
@@ -103,6 +110,7 @@ async function simulate() {
       partner_type: form.partnerType,
       billing_reason: form.billingReason,
       amount_net_paid: amountMinor.value,
+      sale_count: form.saleCount || 1,
       currency: 'BDT',
     });
     if (mine !== seq) return; // a newer request is in flight

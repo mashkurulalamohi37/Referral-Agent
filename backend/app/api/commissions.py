@@ -38,6 +38,7 @@ class CreateRuleRequest(BaseModel):
     commission_type: str = "PERCENTAGE"
     rate_bps: int = Field(default=1000, ge=0, le=10000)
     fixed_amount_minor: int = Field(default=0, ge=0)
+    tier_schedule: dict[str, Any] | None = None
     currency: str = "BDT"
     min_net_paid_minor: int = 0
     max_commission_minor: int | None = None
@@ -46,6 +47,20 @@ class CreateRuleRequest(BaseModel):
     reward_split: dict[str, Any] = Field(default_factory=lambda: {"WALLET": 100})
     confirmation_days: int = Field(default=14, ge=0)
     priority: int = 0
+
+
+class UpdateRuleRequest(BaseModel):
+    rule_name: str | None = None
+    commission_type: str | None = None
+    rate_bps: int | None = Field(default=None, ge=0, le=10000)
+    fixed_amount_minor: int | None = Field(default=None, ge=0)
+    tier_schedule: dict[str, Any] | None = None
+    status: str | None = None
+    priority: int | None = None
+    confirmation_days: int | None = Field(default=None, ge=0)
+    partner_type: str | None = None
+    min_net_paid_minor: int | None = None
+    max_commission_minor: int | None = None
 
 
 # ---------------------------------------------------------------- Partner Commissions
@@ -87,7 +102,90 @@ async def list_commissions(
     }
 
 
-# ---------------------------------------------------------------- Admin Rules
+# ---------------------------------------------------------------- Admin Dynamic Rules CRUD
+
+
+@router.get(
+    "/v1/admin/rules",
+    response_model=dict[str, Any],
+    summary="Admin: List all commission rules dynamically",
+)
+async def list_rules_endpoint(
+    admin_user: Annotated[User, Depends(require_roles("SUPER_ADMIN", "ADMIN"))],
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+    product_id: uuid.UUID | None = Query(default=None),
+    partner_type: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+    limit: int = Query(default=100, le=200),
+    offset: int = Query(default=0, ge=0),
+) -> dict[str, Any]:
+    rules = await commission_service.list_commission_rules(
+        session,
+        product_id=product_id,
+        partner_type=partner_type,
+        status=status,
+        limit=limit,
+        offset=offset,
+    )
+    return {
+        "success": True,
+        "data": [
+            {
+                "id": str(r.id),
+                "rule_name": r.rule_name,
+                "product_id": str(r.product_id) if r.product_id else None,
+                "partner_type": r.partner_type,
+                "commission_type": r.commission_type,
+                "rate_bps": r.rate_bps,
+                "fixed_amount_minor": r.fixed_amount_minor,
+                "tier_schedule": r.tier_schedule,
+                "currency": r.currency,
+                "confirmation_days": r.confirmation_days,
+                "priority": r.priority,
+                "status": r.status,
+                "created_at": r.created_at.isoformat(),
+                "updated_at": r.updated_at.isoformat(),
+            }
+            for r in rules
+        ],
+    }
+
+
+@router.get(
+    "/v1/admin/rules/{rule_id}",
+    response_model=dict[str, Any],
+    summary="Admin: Get single commission rule",
+)
+async def get_rule_endpoint(
+    rule_id: uuid.UUID,
+    admin_user: Annotated[User, Depends(require_roles("SUPER_ADMIN", "ADMIN"))],
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> dict[str, Any]:
+    rule = await commission_service.get_commission_rule_by_id(session, rule_id)
+    if not rule:
+        raise PlatformError(ErrorCode.NOT_FOUND, f"Commission rule '{rule_id}' not found")
+    return {
+        "success": True,
+        "data": {
+            "id": str(rule.id),
+            "rule_name": rule.rule_name,
+            "product_id": str(rule.product_id) if rule.product_id else None,
+            "plan_code": rule.plan_code,
+            "partner_type": rule.partner_type,
+            "commission_type": rule.commission_type,
+            "rate_bps": rule.rate_bps,
+            "fixed_amount_minor": rule.fixed_amount_minor,
+            "tier_schedule": rule.tier_schedule,
+            "currency": rule.currency,
+            "min_net_paid_minor": rule.min_net_paid_minor,
+            "max_commission_minor": rule.max_commission_minor,
+            "confirmation_days": rule.confirmation_days,
+            "priority": rule.priority,
+            "status": rule.status,
+            "created_at": rule.created_at.isoformat(),
+            "updated_at": rule.updated_at.isoformat(),
+        },
+    }
 
 
 @router.post(
@@ -113,6 +211,7 @@ async def create_rule_endpoint(
         commission_type=payload.commission_type,
         rate_bps=payload.rate_bps,
         fixed_amount_minor=payload.fixed_amount_minor,
+        tier_schedule=payload.tier_schedule,
         currency=payload.currency,
         min_net_paid_minor=payload.min_net_paid_minor,
         max_commission_minor=payload.max_commission_minor,
@@ -130,10 +229,66 @@ async def create_rule_endpoint(
             "commission_type": rule.commission_type,
             "rate_bps": rule.rate_bps,
             "fixed_amount_minor": rule.fixed_amount_minor,
+            "tier_schedule": rule.tier_schedule,
             "confirmation_days": rule.confirmation_days,
             "status": rule.status,
         },
     }
+
+
+@router.patch(
+    "/v1/admin/rules/{rule_id}",
+    response_model=dict[str, Any],
+    summary="Admin: Update dynamic commission rule",
+)
+async def update_rule_endpoint(
+    rule_id: uuid.UUID,
+    payload: UpdateRuleRequest,
+    admin_user: Annotated[User, Depends(require_roles("SUPER_ADMIN", "ADMIN"))],
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> dict[str, Any]:
+    rule = await commission_service.update_commission_rule(
+        session,
+        rule_id,
+        rule_name=payload.rule_name,
+        rate_bps=payload.rate_bps,
+        fixed_amount_minor=payload.fixed_amount_minor,
+        commission_type=payload.commission_type,
+        tier_schedule=payload.tier_schedule,
+        status=payload.status,
+        priority=payload.priority,
+        confirmation_days=payload.confirmation_days,
+        partner_type=payload.partner_type,
+        min_net_paid_minor=payload.min_net_paid_minor,
+        max_commission_minor=payload.max_commission_minor,
+    )
+    return {
+        "success": True,
+        "data": {
+            "id": str(rule.id),
+            "rule_name": rule.rule_name,
+            "commission_type": rule.commission_type,
+            "rate_bps": rule.rate_bps,
+            "fixed_amount_minor": rule.fixed_amount_minor,
+            "tier_schedule": rule.tier_schedule,
+            "confirmation_days": rule.confirmation_days,
+            "status": rule.status,
+        },
+    }
+
+
+@router.delete(
+    "/v1/admin/rules/{rule_id}",
+    response_model=dict[str, Any],
+    summary="Admin: Deactivate / Archive commission rule",
+)
+async def delete_rule_endpoint(
+    rule_id: uuid.UUID,
+    admin_user: Annotated[User, Depends(require_roles("SUPER_ADMIN", "ADMIN"))],
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> dict[str, Any]:
+    await commission_service.delete_commission_rule(session, rule_id)
+    return {"success": True, "message": f"Rule {rule_id} archived successfully"}
 
 
 class SimulateRuleRequest(BaseModel):
@@ -142,6 +297,7 @@ class SimulateRuleRequest(BaseModel):
     partner_type: str | None = None
     billing_reason: str = "initial"
     amount_net_paid: int = Field(gt=0, description="Amount net paid in minor units (poisha)")
+    sale_count: int = Field(default=1, ge=1, description="Cumulative sale count for progressive tier evaluation")
     currency: str = "BDT"
 
 
@@ -192,7 +348,7 @@ async def simulate_commission_rule(
         has_billing_match=bool(rule.billing_reason and rule.billing_reason == payload.billing_reason),
         has_product_match=bool(product_id and rule.product_id == product_id),
     )
-    comm_amount = commission_service.calculate_commission_amount(payload.amount_net_paid, rule)
+    comm_amount = commission_service.calculate_commission_amount(payload.amount_net_paid, rule, sale_count=payload.sale_count)
 
     return {
         "success": True,
@@ -203,7 +359,9 @@ async def simulate_commission_rule(
             "commission_type": rule.commission_type,
             "rate_bps": rule.rate_bps,
             "specificity_score": score,
+            "sale_count": payload.sale_count,
             "commission_amount_minor": comm_amount,
+            "tier_schedule": rule.tier_schedule,
             "reward_split": rule.reward_split,
             "confirmation_days": rule.confirmation_days,
         },

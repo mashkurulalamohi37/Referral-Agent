@@ -9,6 +9,11 @@ export interface Me {
   time_zone: string;
   status: string;
   kyc_status: 'NONE' | 'PENDING' | 'VERIFIED' | 'REJECTED' | string;
+  agent_type?: 'INDIVIDUAL' | 'COMPANY' | string;
+  company_name?: string | null;
+  trade_license_number?: string | null;
+  tax_identification_number?: string | null;
+  representative_designation?: string | null;
   roles: string[];
   created_at: string;
 }
