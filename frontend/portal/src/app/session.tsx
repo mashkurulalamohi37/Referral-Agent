@@ -12,7 +12,7 @@ interface SessionApi {
   demo: boolean;
   me: Me | undefined;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (data: { displayName: string; email: string; password: string; phone?: string }) => Promise<void>;
+  signUp: (data: { displayName: string; email: string; password: string; phone?: string; agentType?: 'INDIVIDUAL' | 'COMPANY'; companyName?: string }) => Promise<void>;
   exchangeHandoff: (token: string) => Promise<void>;
   startDemo: () => void;
   signOut: () => Promise<void>;
@@ -53,7 +53,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   );
 
   const signUp = useCallback(
-    async (data: { displayName: string; email: string; password: string; phone?: string }) => {
+    async (data: { displayName: string; email: string; password: string; phone?: string; agentType?: 'INDIVIDUAL' | 'COMPANY'; companyName?: string }) => {
       const tokens = await api<TokenPair>('/v1/auth/register', {
         method: 'POST',
         body: {
@@ -61,6 +61,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           email: data.email,
           password: data.password,
           phone: data.phone || null,
+          agent_type: data.agentType || 'INDIVIDUAL',
+          company_name: data.companyName || null,
         },
         anonymous: true,
       });

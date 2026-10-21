@@ -23,6 +23,8 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=6, max_length=128)
     phone: str | None = Field(default=None, max_length=32)
+    agent_type: str | None = Field(default="INDIVIDUAL", max_length=32)
+    company_name: str | None = Field(default=None, max_length=120)
 
 
 class LoginRequest(BaseModel):
@@ -66,12 +68,18 @@ async def register(
             f"An account with email '{clean_email}' already exists",
         )
 
+    resolved_agent_type = (body.agent_type or "INDIVIDUAL").upper()
+    if resolved_agent_type not in ("INDIVIDUAL", "COMPANY"):
+        resolved_agent_type = "INDIVIDUAL"
+
     user = await identity_service.create_user(
         session,
         display_name=body.display_name.strip(),
         email=clean_email,
         password=body.password,
         phone=body.phone,
+        agent_type=resolved_agent_type,
+        company_name=body.company_name.strip() if body.company_name else None,
         roles=["PARTNER", "CUSTOMER"],
     )
 

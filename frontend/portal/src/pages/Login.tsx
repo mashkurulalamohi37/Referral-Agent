@@ -2,7 +2,18 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { m } from 'motion/react';
 import { useTranslation } from 'react-i18next';
-import { AlertCircle, LogIn, PlayCircle, Sparkles, UserPlus } from 'lucide-react';
+import {
+  AlertCircle,
+  Building2,
+  CheckCircle2,
+  Eye,
+  EyeOff,
+  LogIn,
+  PlayCircle,
+  Sparkles,
+  User,
+  UserPlus,
+} from 'lucide-react';
 import { useSession } from '../app/session';
 import { useBrand } from '../app/brand';
 import { ApiError } from '../lib/http';
@@ -16,11 +27,15 @@ export function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as { from?: string } | null)?.from ?? '/';
+
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+  const [agentType, setAgentType] = useState<'INDIVIDUAL' | 'COMPANY'>('INDIVIDUAL');
+  const [companyName, setCompanyName] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const { page } = usePresets();
@@ -38,6 +53,8 @@ export function Login() {
           email: email.trim(),
           password,
           phone: phone.trim() || undefined,
+          agentType,
+          companyName: agentType === 'COMPANY' ? companyName.trim() : undefined,
         });
       } else {
         await signIn(email.trim(), password);
@@ -64,7 +81,11 @@ export function Login() {
 
   const isSubmitDisabled =
     mode === 'signup'
-      ? !displayName.trim() || !email.trim() || !password || password.length < 6
+      ? !displayName.trim() ||
+        !email.trim() ||
+        !password ||
+        password.length < 6 ||
+        (agentType === 'COMPANY' && !companyName.trim())
       : !email.trim() || !password;
 
   return (
@@ -72,21 +93,32 @@ export function Login() {
       <m.div className="auth-card" variants={page} initial="initial" animate="animate">
         <Card pad>
           <div className="stack" style={{ gap: 20 }}>
-            <div className="brand-mark" style={{ padding: 0 }}>
-              <span className="brand-mark__logo" aria-hidden="true">
-                <Sparkles size={18} />
+            {/* Header Brand */}
+            <div className="row-between">
+              <div className="brand-mark" style={{ padding: 0 }}>
+                <span className="brand-mark__logo" aria-hidden="true">
+                  <Sparkles size={18} />
+                </span>
+                <div>
+                  <span style={{ fontSize: '1.05rem', fontWeight: 700 }}>{brandName}</span>
+                  <span className="brand-mark__sub">{t('app.name')}</span>
+                </div>
+              </div>
+              <span className="pill pill--brand" style={{ fontSize: '0.7rem' }}>
+                PRO
               </span>
-              <span>{brandName}</span>
             </div>
 
+            {/* Mode Switcher Tabs */}
             <div
               style={{
                 display: 'grid',
                 gridTemplateColumns: '1fr 1fr',
-                gap: 6,
-                background: 'var(--surface-hover, #f1f5f9)',
+                gap: 4,
+                background: 'var(--bg-subtle)',
                 padding: 4,
-                borderRadius: 'var(--radius, 8px)',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--border-subtle)',
               }}
               role="tablist"
               aria-label="Auth mode"
@@ -99,19 +131,15 @@ export function Login() {
                   setMode('signin');
                   setError(null);
                 }}
-                className={`btn ${mode === 'signin' ? 'btn--secondary' : 'btn--ghost'}`}
+                className="btn btn--sm"
                 style={{
-                  fontWeight: mode === 'signin' ? 600 : 400,
-                  background: mode === 'signin' ? 'var(--surface, #ffffff)' : 'transparent',
-                  boxShadow: mode === 'signin' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                  fontWeight: mode === 'signin' ? 700 : 500,
+                  background: mode === 'signin' ? 'var(--bg-surface)' : 'transparent',
+                  boxShadow: mode === 'signin' ? 'var(--shadow-sm)' : 'none',
+                  color: mode === 'signin' ? 'var(--brand)' : 'var(--text-muted)',
                   border: 'none',
-                  padding: '8px 12px',
-                  fontSize: '0.875rem',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 6,
+                  borderRadius: 'calc(var(--radius-md) - 3px)',
+                  transition: 'all var(--motion-fast) var(--ease-out)',
                 }}
               >
                 <LogIn size={15} aria-hidden="true" />
@@ -125,19 +153,15 @@ export function Login() {
                   setMode('signup');
                   setError(null);
                 }}
-                className={`btn ${mode === 'signup' ? 'btn--secondary' : 'btn--ghost'}`}
+                className="btn btn--sm"
                 style={{
-                  fontWeight: mode === 'signup' ? 600 : 400,
-                  background: mode === 'signup' ? 'var(--surface, #ffffff)' : 'transparent',
-                  boxShadow: mode === 'signup' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                  fontWeight: mode === 'signup' ? 700 : 500,
+                  background: mode === 'signup' ? 'var(--bg-surface)' : 'transparent',
+                  boxShadow: mode === 'signup' ? 'var(--shadow-sm)' : 'none',
+                  color: mode === 'signup' ? 'var(--brand)' : 'var(--text-muted)',
                   border: 'none',
-                  padding: '8px 12px',
-                  fontSize: '0.875rem',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 6,
+                  borderRadius: 'calc(var(--radius-md) - 3px)',
+                  transition: 'all var(--motion-fast) var(--ease-out)',
                 }}
               >
                 <UserPlus size={15} aria-hidden="true" />
@@ -146,42 +170,129 @@ export function Login() {
             </div>
 
             <div>
-              <h1 className="page-title">{mode === 'signup' ? t('auth.signUpTitle') : t('auth.title')}</h1>
-              <p className="page-subtitle">{mode === 'signup' ? t('auth.signUpSubtitle') : t('auth.subtitle')}</p>
+              <h1 className="page-title" style={{ fontSize: '1.25rem' }}>
+                {mode === 'signup' ? t('auth.signUpTitle') : t('auth.title')}
+              </h1>
+              <p className="page-subtitle" style={{ fontSize: '0.8125rem' }}>
+                {mode === 'signup' ? t('auth.signUpSubtitle') : t('auth.subtitle')}
+              </p>
             </div>
 
             <form className="stack" style={{ gap: 14 }} onSubmit={onSubmit} noValidate>
+              {/* Partner Type Selector (Sign Up Mode) */}
               {mode === 'signup' && (
                 <div className="field">
-                  <label className="field__label" htmlFor="displayName">{t('auth.fullName')}</label>
+                  <span className="field__label">{t('auth.partnerType')}</span>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                    <button
+                      type="button"
+                      onClick={() => setAgentType('INDIVIDUAL')}
+                      style={{
+                        padding: '10px 12px',
+                        borderRadius: 'var(--radius-md)',
+                        border: `1.5px solid ${agentType === 'INDIVIDUAL' ? 'var(--brand)' : 'var(--border-default)'}`,
+                        background: agentType === 'INDIVIDUAL' ? 'var(--brand-subtle)' : 'var(--bg-surface)',
+                        color: agentType === 'INDIVIDUAL' ? 'var(--brand)' : 'var(--text-main)',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        transition: 'all var(--motion-fast) var(--ease-out)',
+                      }}
+                    >
+                      <div className="row" style={{ gap: 6, fontWeight: 700, fontSize: '0.8125rem' }}>
+                        <User size={15} />
+                        <span>{t('auth.individualType')}</span>
+                      </div>
+                      <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                        {t('auth.individualSub')}
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setAgentType('COMPANY')}
+                      style={{
+                        padding: '10px 12px',
+                        borderRadius: 'var(--radius-md)',
+                        border: `1.5px solid ${agentType === 'COMPANY' ? 'var(--brand)' : 'var(--border-default)'}`,
+                        background: agentType === 'COMPANY' ? 'var(--brand-subtle)' : 'var(--bg-surface)',
+                        color: agentType === 'COMPANY' ? 'var(--brand)' : 'var(--text-main)',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        transition: 'all var(--motion-fast) var(--ease-out)',
+                      }}
+                    >
+                      <div className="row" style={{ gap: 6, fontWeight: 700, fontSize: '0.8125rem' }}>
+                        <Building2 size={15} />
+                        <span>{t('auth.companyType')}</span>
+                      </div>
+                      <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                        {t('auth.companySub')}
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Company Name (only if company agent) */}
+              {mode === 'signup' && agentType === 'COMPANY' && (
+                <div className="field">
+                  <label className="field__label" htmlFor="companyName">
+                    {t('auth.companyName')} <span style={{ color: 'var(--danger)' }}>*</span>
+                  </label>
+                  <input
+                    id="companyName"
+                    className="input"
+                    type="text"
+                    required
+                    placeholder="e.g. Acme Health Tech Ltd."
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
+                  />
+                </div>
+              )}
+
+              {/* Display / Contact Name */}
+              {mode === 'signup' && (
+                <div className="field">
+                  <label className="field__label" htmlFor="displayName">
+                    {agentType === 'COMPANY' ? t('auth.representativeName') : t('auth.fullName')} <span style={{ color: 'var(--danger)' }}>*</span>
+                  </label>
                   <input
                     id="displayName"
                     className="input"
                     type="text"
                     autoComplete="name"
                     required
+                    placeholder="e.g. Shakil Ahmed"
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
                   />
                 </div>
               )}
 
+              {/* Email */}
               <div className="field">
-                <label className="field__label" htmlFor="email">{t('auth.email')}</label>
+                <label className="field__label" htmlFor="email">
+                  {t('auth.email')} <span style={{ color: 'var(--danger)' }}>*</span>
+                </label>
                 <input
                   id="email"
                   className="input"
                   type="email"
                   autoComplete="email"
                   required
+                  placeholder="name@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
               </div>
 
+              {/* Phone (Sign Up only) */}
               {mode === 'signup' && (
                 <div className="field">
-                  <label className="field__label" htmlFor="phone">{t('auth.phone')}</label>
+                  <label className="field__label" htmlFor="phone">
+                    {t('auth.phone')}
+                  </label>
                   <input
                     id="phone"
                     className="input"
@@ -194,18 +305,40 @@ export function Login() {
                 </div>
               )}
 
+              {/* Password with Eye Toggle */}
               <div className="field">
-                <label className="field__label" htmlFor="password">{t('auth.password')}</label>
+                <div className="row-between">
+                  <label className="field__label" htmlFor="password">
+                    {t('auth.password')} <span style={{ color: 'var(--danger)' }}>*</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="btn btn--ghost btn--sm"
+                    style={{ padding: '0 6px', fontSize: '0.75rem', color: 'var(--text-muted)' }}
+                    title={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
+                  >
+                    {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                    <span style={{ marginLeft: 4 }}>{showPassword ? t('auth.hidePassword') : t('auth.showPassword')}</span>
+                  </button>
+                </div>
                 <input
                   id="password"
                   className="input"
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
                   required
                   minLength={6}
+                  placeholder={mode === 'signup' ? '•••••••• (min 6 characters)' : '••••••••'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
+                {mode === 'signup' && (
+                  <span className="field__hint" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <CheckCircle2 size={12} color={password.length >= 6 ? 'var(--success)' : 'var(--text-tertiary)'} />
+                    <span>{password.length >= 6 ? 'Password requirement met' : 'At least 6 characters required'}</span>
+                  </span>
+                )}
               </div>
 
               {error && <Notice tone="danger" icon={AlertCircle}>{error}</Notice>}
@@ -235,17 +368,22 @@ export function Login() {
               </div>
             </form>
 
-            <p className="xsmall muted">{t('auth.fromProduct')}</p>
-            <Button
-              variant="ghost"
-              onClick={() => {
-                startDemo();
-                navigate('/', { replace: true });
-              }}
-            >
-              <PlayCircle size={16} aria-hidden="true" />
-              {t('auth.demo')}
-            </Button>
+            <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 14 }}>
+              <p className="xsmall muted" style={{ textAlign: 'center', marginBottom: 10 }}>
+                {t('auth.fromProduct')}
+              </p>
+              <Button
+                variant="secondary"
+                block
+                onClick={() => {
+                  startDemo();
+                  navigate('/', { replace: true });
+                }}
+              >
+                <PlayCircle size={16} aria-hidden="true" />
+                {t('auth.demo')}
+              </Button>
+            </div>
           </div>
         </Card>
       </m.div>

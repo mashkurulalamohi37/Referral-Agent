@@ -41,6 +41,8 @@ async def create_user(
     locale: str = "en",
     time_zone: str = "Asia/Dhaka",
     roles: list[str] | None = None,
+    agent_type: str = "INDIVIDUAL",
+    company_name: str | None = None,
 ) -> User:
     """Creates a user and assigns default or specified roles."""
     clean_email = email.lower().strip() if email else None
@@ -61,6 +63,8 @@ async def create_user(
         time_zone=time_zone,
         status="ACTIVE",
         kyc_status="NONE",
+        agent_type=agent_type,
+        company_name=company_name.strip() if company_name else None,
     )
     session.add(user)
     await session.flush()
