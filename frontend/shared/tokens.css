@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
 /*
  * Shared design tokens for the partner portal and the admin console
  * (docs/ux/ui-ux-improvement-plan.md §6). Light theme by default; dark via the OS setting
@@ -7,8 +9,8 @@
 :root {
   color-scheme: light;
 
-  /* Typography */
-  --font-sans: 'Inter', 'Hind Siliguri', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  /* Typography (UI/UX Pro Max: Plus Jakarta Sans for modern SaaS) */
+  --font-sans: 'Plus Jakarta Sans', 'Inter', 'Hind Siliguri', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', 'Hind Siliguri', ui-monospace, 'SF Mono', Consolas, monospace;
   --text-xs: 0.75rem;
   --text-sm: 0.8125rem;
@@ -91,6 +93,15 @@
   --shadow-lg: 0 18px 40px -12px rgba(15, 23, 42, 0.22);
   --focus-ring: 0 0 0 3px color-mix(in srgb, var(--brand) 35%, transparent);
 
+  /* Glassmorphism & Soft Depth (UI/UX Pro Max) */
+  --glass-bg: rgba(255, 255, 255, 0.85);
+  --glass-border: rgba(255, 255, 255, 0.7);
+  --glass-blur: blur(14px) saturate(180%);
+  --card-inner-highlight: inset 0 1px 0 0 rgba(255, 255, 255, 0.9);
+  --shadow-card: 0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(15, 23, 42, 0.03);
+  --shadow-card-hover: 0 12px 32px -4px rgba(15, 23, 42, 0.1), 0 2px 6px -1px rgba(15, 23, 42, 0.05);
+  --brand-glow: 0 4px 16px -2px rgba(79, 70, 229, 0.28);
+
   /* Motion (plan §5). Zeroed for reduced motion below. */
   --motion-fast: 120ms;
   --motion-base: 200ms;
@@ -147,6 +158,15 @@
     --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.45);
     --shadow-md: 0 8px 20px -6px rgba(0, 0, 0, 0.6);
     --shadow-lg: 0 20px 44px -12px rgba(0, 0, 0, 0.7);
+
+    /* Glassmorphism & Depth in Dark Mode */
+    --glass-bg: rgba(18, 24, 38, 0.8);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-blur: blur(16px) saturate(190%);
+    --card-inner-highlight: inset 0 1px 0 0 rgba(255, 255, 255, 0.08);
+    --shadow-card: 0 4px 24px -2px rgba(0, 0, 0, 0.45);
+    --shadow-card-hover: 0 14px 40px -4px rgba(0, 0, 0, 0.7), 0 0 24px -4px rgba(129, 140, 248, 0.18);
+    --brand-glow: 0 4px 20px -2px rgba(129, 140, 248, 0.35);
   }
 }
 
@@ -188,6 +208,15 @@
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.45);
   --shadow-md: 0 8px 20px -6px rgba(0, 0, 0, 0.6);
   --shadow-lg: 0 20px 44px -12px rgba(0, 0, 0, 0.7);
+
+  /* Glassmorphism & Depth in Dark Mode */
+  --glass-bg: rgba(18, 24, 38, 0.8);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-blur: blur(16px) saturate(190%);
+  --card-inner-highlight: inset 0 1px 0 0 rgba(255, 255, 255, 0.08);
+  --shadow-card: 0 4px 24px -2px rgba(0, 0, 0, 0.45);
+  --shadow-card-hover: 0 14px 40px -4px rgba(0, 0, 0, 0.7), 0 0 24px -4px rgba(129, 140, 248, 0.18);
+  --brand-glow: 0 4px 20px -2px rgba(129, 140, 248, 0.35);
 }
 
 /* ------------------------------------------------------------------ reduced motion */
