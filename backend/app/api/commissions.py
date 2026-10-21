@@ -61,6 +61,7 @@ class UpdateRuleRequest(BaseModel):
     partner_type: str | None = None
     min_net_paid_minor: int | None = None
     max_commission_minor: int | None = None
+    eligible_months_from_conversion: int | None = None
 
 
 # ---------------------------------------------------------------- Partner Commissions
@@ -140,6 +141,7 @@ async def list_rules_endpoint(
                 "fixed_amount_minor": r.fixed_amount_minor,
                 "tier_schedule": r.tier_schedule,
                 "currency": r.currency,
+                "eligible_months_from_conversion": r.eligible_months_from_conversion,
                 "confirmation_days": r.confirmation_days,
                 "priority": r.priority,
                 "status": r.status,
@@ -179,6 +181,7 @@ async def get_rule_endpoint(
             "currency": rule.currency,
             "min_net_paid_minor": rule.min_net_paid_minor,
             "max_commission_minor": rule.max_commission_minor,
+            "eligible_months_from_conversion": rule.eligible_months_from_conversion,
             "confirmation_days": rule.confirmation_days,
             "priority": rule.priority,
             "status": rule.status,
@@ -261,6 +264,7 @@ async def update_rule_endpoint(
         partner_type=payload.partner_type,
         min_net_paid_minor=payload.min_net_paid_minor,
         max_commission_minor=payload.max_commission_minor,
+        eligible_months_from_conversion=payload.eligible_months_from_conversion,
     )
     return {
         "success": True,
@@ -271,6 +275,7 @@ async def update_rule_endpoint(
             "rate_bps": rule.rate_bps,
             "fixed_amount_minor": rule.fixed_amount_minor,
             "tier_schedule": rule.tier_schedule,
+            "eligible_months_from_conversion": rule.eligible_months_from_conversion,
             "confirmation_days": rule.confirmation_days,
             "status": rule.status,
         },
@@ -298,6 +303,7 @@ class SimulateRuleRequest(BaseModel):
     billing_reason: str = "initial"
     amount_net_paid: int = Field(gt=0, description="Amount net paid in minor units (poisha)")
     sale_count: int = Field(default=1, ge=1, description="Cumulative sale count for progressive tier evaluation")
+    customer_tenure_months: int = Field(default=1, ge=1, description="Customer subscription age in months (e.g. 1-12 for Year 1, 13-24 for Year 2, 25-36 for Year 3)")
     currency: str = "BDT"
 
 
@@ -348,7 +354,12 @@ async def simulate_commission_rule(
         has_billing_match=bool(rule.billing_reason and rule.billing_reason == payload.billing_reason),
         has_product_match=bool(product_id and rule.product_id == product_id),
     )
-    comm_amount = commission_service.calculate_commission_amount(payload.amount_net_paid, rule, sale_count=payload.sale_count)
+    comm_amount = commission_service.calculate_commission_amount(
+        payload.amount_net_paid,
+        rule,
+        sale_count=payload.sale_count,
+        customer_tenure_months=payload.customer_tenure_months,
+    )
 
     return {
         "success": True,
@@ -360,6 +371,9 @@ async def simulate_commission_rule(
             "rate_bps": rule.rate_bps,
             "specificity_score": score,
             "sale_count": payload.sale_count,
+            "customer_tenure_months": payload.customer_tenure_months,
+            "customer_tenure_years": round(payload.customer_tenure_months / 12, 1),
+            "eligible_months_from_conversion": rule.eligible_months_from_conversion,
             "commission_amount_minor": comm_amount,
             "tier_schedule": rule.tier_schedule,
             "reward_split": rule.reward_split,

@@ -194,16 +194,42 @@ def calculate_commission_amount(
     rule: CommissionRule,
     *,
     sale_count: int = 1,
+    customer_tenure_months: int = 1,
 ) -> int:
-    """Calculates commission amount using integer minor units, progressive tiers, and single ROUND_HALF_UP (Invariant I3)."""
+    """Calculates commission amount using integer minor units, progressive tiers, customer tenure decay, and single ROUND_HALF_UP (Invariant I3)."""
     min_net_paid = rule.min_net_paid_minor or 0
     if amount_net_paid < min_net_paid:
         return 0
 
+    # 1. Lifetime Cutoff Check: If customer has exceeded max eligible months (e.g. 24 or 36 months)
+    if rule.eligible_months_from_conversion and rule.eligible_months_from_conversion > 0:
+        if customer_tenure_months > rule.eligible_months_from_conversion:
+            return 0
+
+    # 2. Match Tenure Schedule Decay (e.g., Year 1 vs Year 2 vs Year 3 to account for server/infra costs)
+    matched_tenure = None
+    if rule.tier_schedule and isinstance(rule.tier_schedule, dict):
+        tenure_tiers = rule.tier_schedule.get("tenure_tiers", [])
+        for tt in tenure_tiers:
+            min_m = tt.get("min_month", 1)
+            max_m = tt.get("max_month")
+            if customer_tenure_months >= min_m and (max_m is None or customer_tenure_months <= max_m):
+                matched_tenure = tt
+                break
+
+    # 3. Base Commission by Type with Tenure Adjustments
     if rule.commission_type == "PERCENTAGE":
-        commission = apply_bps(amount_net_paid, rule.rate_bps)
+        effective_rate = matched_tenure.get("rate_bps", rule.rate_bps) if matched_tenure and "rate_bps" in matched_tenure else rule.rate_bps
+        if matched_tenure and "multiplier_bps" in matched_tenure:
+            effective_rate = (effective_rate * matched_tenure["multiplier_bps"]) // 10000
+        commission = apply_bps(amount_net_paid, effective_rate)
+
     elif rule.commission_type == "FIXED":
-        commission = rule.fixed_amount_minor
+        effective_fixed = matched_tenure.get("fixed_amount_minor", rule.fixed_amount_minor) if matched_tenure and "fixed_amount_minor" in matched_tenure else rule.fixed_amount_minor
+        if matched_tenure and "multiplier_bps" in matched_tenure:
+            effective_fixed = (effective_fixed * matched_tenure["multiplier_bps"]) // 10000
+        commission = effective_fixed
+
     elif rule.commission_type == "TIERED" and rule.tier_schedule:
         # Match progressive volume tier schedule
         tiers = rule.tier_schedule.get("tiers", [])
@@ -220,6 +246,13 @@ def calculate_commission_amount(
         milestone_bonus = 0
         if matched_tier and sale_count == matched_tier.get("min_count"):
             milestone_bonus = matched_tier.get("fixed_bonus_minor", 0)
+
+        # Apply tenure decay if tenure tier specifies rate override or multiplier
+        if matched_tenure:
+            if "rate_bps" in matched_tenure:
+                tier_rate = matched_tenure["rate_bps"]
+            elif "multiplier_bps" in matched_tenure:
+                tier_rate = (tier_rate * matched_tenure["multiplier_bps"]) // 10000
 
         commission = apply_bps(amount_net_paid, tier_rate) + tier_fixed + milestone_bonus
     else:
@@ -308,14 +341,24 @@ async def process_payment_commission(
     if not rule:
         return None
 
+    # Calculate customer subscription age / tenure in months from initial attribution
+    tenure_days = max(0, (earned_time - attr.registered_at).days)
+    customer_tenure_months = max(1, int(tenure_days / 30.4375) + 1)
+
     # Check renewal window eligibility (§9.3, §11.3)
     if billing_reason == "renewal":
-        max_renewal_days = rule.eligible_months_from_conversion * 30
-        if earned_time > attr.registered_at + timedelta(days=max_renewal_days):
-            return None
+        if rule.eligible_months_from_conversion and rule.eligible_months_from_conversion > 0:
+            max_renewal_days = rule.eligible_months_from_conversion * 30
+            if earned_time > attr.registered_at + timedelta(days=max_renewal_days):
+                return None
 
-    # 4. Calculate commission
-    amount = calculate_commission_amount(amount_net_paid, rule, sale_count=sale_count)
+    # 4. Calculate commission with volume tiers & customer tenure decay
+    amount = calculate_commission_amount(
+        amount_net_paid,
+        rule,
+        sale_count=sale_count,
+        customer_tenure_months=customer_tenure_months,
+    )
     if amount <= 0:
         return None
 
@@ -329,6 +372,8 @@ async def process_payment_commission(
         "commission_type": rule.commission_type,
         "sale_number": sale_count,
         "agent_type": partner_type,
+        "customer_tenure_months": customer_tenure_months,
+        "customer_tenure_years": round(customer_tenure_months / 12, 1),
         "confirmation_days": rule.confirmation_days,
         "reward_split": rule.reward_split,
         "earned_at": earned_time.isoformat(),
@@ -602,6 +647,7 @@ async def update_commission_rule(
     partner_type: str | None = None,
     min_net_paid_minor: int | None = None,
     max_commission_minor: int | None = None,
+    eligible_months_from_conversion: int | None = None,
 ) -> CommissionRule:
     """Updates an existing dynamic commission rule."""
     rule = await get_commission_rule_by_id(session, rule_id)
@@ -630,6 +676,8 @@ async def update_commission_rule(
         rule.min_net_paid_minor = min_net_paid_minor
     if max_commission_minor is not None:
         rule.max_commission_minor = max_commission_minor
+    if eligible_months_from_conversion is not None:
+        rule.eligible_months_from_conversion = eligible_months_from_conversion
 
     rule.updated_at = clock.now()
     session.add(rule)

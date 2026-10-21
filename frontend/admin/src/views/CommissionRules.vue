@@ -59,7 +59,7 @@
               <th>Target Service</th>
               <th>Agent Type</th>
               <th>Type & Rate</th>
-              <th>Volume Milestone Tiers</th>
+              <th>Volume Tiers & Tenure Decay</th>
               <th>Hold Days</th>
               <th>Priority</th>
               <th>Status</th>
@@ -108,7 +108,17 @@
                     <span v-if="t.fixed_bonus_minor" style="color: #fbbf24; margin-left: 4px;">(+৳{{ (t.fixed_bonus_minor / 100).toLocaleString() }} bonus)</span>
                   </div>
                 </div>
-                <span v-else class="xs muted">Standard Rate</span>
+                <div v-if="rule.tier_schedule && rule.tier_schedule.tenure_tiers" style="display: flex; flex-direction: column; gap: 3px; margin-top: 6px; padding-top: 4px; border-top: 1px dashed rgba(148, 163, 184, 0.2);">
+                  <span class="xs" style="color: #c084fc; font-weight: 600;">⏱️ Tenure Decay (Cost Adjusted):</span>
+                  <div v-for="(tt, ttIdx) in rule.tier_schedule.tenure_tiers" :key="ttIdx" class="xs" style="color: #94a3b8;">
+                    <span>{{ tt.tenure_name || `M${tt.min_month}-${tt.max_month || '∞'}` }}: </span>
+                    <strong style="color: #e2e8f0;">{{ (tt.rate_bps / 100).toFixed(1) }}%</strong>
+                  </div>
+                </div>
+                <span v-if="!rule.tier_schedule?.tiers && !rule.tier_schedule?.tenure_tiers" class="xs muted">Standard Rate</span>
+                <div v-if="rule.eligible_months_from_conversion" class="xs muted" style="margin-top: 4px;">
+                  Max lifespan: {{ rule.eligible_months_from_conversion }}m ({{ (rule.eligible_months_from_conversion / 12).toFixed(1) }}y)
+                </div>
               </td>
               <td class="num-mono">{{ rule.confirmation_days }}d</td>
               <td class="num-mono">{{ rule.priority }}</td>
@@ -231,6 +241,58 @@
           </div>
         </div>
 
+        <!-- Customer Tenure Decay & Cost Adjustment Section -->
+        <div class="admin-card" style="padding: 12px 14px; background: rgba(15, 23, 42, 0.5); border: 1px solid rgba(148, 163, 184, 0.15);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <div>
+              <span class="small strong" style="color: #c084fc;">Customer Tenure Decay & Server Cost Protection</span>
+              <p class="xs muted">Adjust commission after 2y/3y or sunset to account for server & maintenance cost increases.</p>
+            </div>
+            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+              <input type="checkbox" v-model="form.enableTenureDecay" />
+              <span class="xs" style="font-weight: 600;">Enable</span>
+            </label>
+          </div>
+
+          <div v-if="form.enableTenureDecay" class="stack" style="gap: 10px; margin-top: 10px;">
+            <div class="field">
+              <label class="field__label" for="rule-lifespan">Maximum Commission Lifespan (Months)</label>
+              <input id="rule-lifespan" v-model.number="form.eligible_months" type="number" min="0" class="admin-input num-mono" placeholder="36" />
+              <span class="field__hint">e.g. 24 (2 yrs) or 36 (3 yrs). Set 0 for lifetime ongoing. Commission ends after this window.</span>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span class="xs strong" style="color: var(--text-secondary);">Yearly / Monthly Commission Decay Schedule:</span>
+              <button type="button" class="btn btn--ghost" style="font-size: 0.75rem; padding: 2px 6px; color: #c084fc;" @click="addTenureRow">
+                + Add Tenure Period
+              </button>
+            </div>
+
+            <div v-for="(tt, tIdx) in form.tenureTiers" :key="tIdx" class="admin-card" style="padding: 8px 10px; background: rgba(30, 41, 59, 0.4);">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <span class="xs strong" style="color: #c084fc;">{{ tt.tenure_name || `Period ${tIdx + 1}` }}</span>
+                <button v-if="form.tenureTiers.length > 1" type="button" class="btn btn--ghost" style="padding: 1px 4px; font-size: 0.75rem; color: var(--danger);" @click="removeTenureRow(tIdx)">
+                  Remove
+                </button>
+              </div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+                <div>
+                  <span class="xs muted" style="display: block; margin-bottom: 2px;">Min Month</span>
+                  <input v-model.number="tt.min_month" type="number" class="admin-input num-mono" style="padding: 4px 6px; font-size: 0.75rem;" />
+                </div>
+                <div>
+                  <span class="xs muted" style="display: block; margin-bottom: 2px;">Max Month</span>
+                  <input v-model.number="tt.max_month" type="number" placeholder="∞" class="admin-input num-mono" style="padding: 4px 6px; font-size: 0.75rem;" />
+                </div>
+                <div>
+                  <span class="xs muted" style="display: block; margin-bottom: 2px;">Rate (%)</span>
+                  <input v-model.number="tt.rate_percent" type="number" step="0.1" class="admin-input num-mono" style="padding: 4px 6px; font-size: 0.75rem;" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
           <div class="field">
             <label class="field__label" for="rule-priority">Priority</label>
@@ -282,10 +344,18 @@ const form = reactive({
   fixed_amount: 0,
   priority: 10,
   confirmation_days: 14,
+  eligible_months: 36,
+  enableTenureDecay: false,
   tiers: [
     { tier_name: 'Tier 1 (1-50 Sales)', min_count: 1, max_count: 50, rate_percent: 10, bonus: 0 },
     { tier_name: 'Tier 2 (51-100 Sales)', min_count: 51, max_count: 100, rate_percent: 15, bonus: 5000 },
     { tier_name: 'Tier 3 (101+ Sales Elite)', min_count: 101, max_count: null as number | null, rate_percent: 20, bonus: 10000 },
+  ],
+  tenureTiers: [
+    { tenure_name: 'Year 1 (Months 1–12)', min_month: 1, max_month: 12, rate_percent: 20 },
+    { tenure_name: 'Year 2 (Months 13–24)', min_month: 13, max_month: 24, rate_percent: 15 },
+    { tenure_name: 'Year 3 (Months 25–36)', min_month: 25, max_month: 36, rate_percent: 10 },
+    { tenure_name: 'Year 4+ (Month 37+)', min_month: 37, max_month: null as number | null, rate_percent: 5 },
   ],
 });
 
@@ -337,6 +407,21 @@ function removeTierRow(idx: number) {
   form.tiers.splice(idx, 1);
 }
 
+function addTenureRow() {
+  const last = form.tenureTiers[form.tenureTiers.length - 1];
+  const nextMin = last && last.max_month ? last.max_month + 1 : (form.tenureTiers.length ? 37 : 1);
+  form.tenureTiers.push({
+    tenure_name: `Period ${form.tenureTiers.length + 1}`,
+    min_month: nextMin,
+    max_month: null,
+    rate_percent: 5,
+  });
+}
+
+function removeTenureRow(idx: number) {
+  form.tenureTiers.splice(idx, 1);
+}
+
 function openCreateDrawer() {
   editingRule.value = null;
   form.rule_name = '';
@@ -347,6 +432,8 @@ function openCreateDrawer() {
   form.fixed_amount = 0;
   form.priority = 10;
   form.confirmation_days = 14;
+  form.eligible_months = 36;
+  form.enableTenureDecay = false;
   drawerOpen.value = true;
 }
 
@@ -359,6 +446,7 @@ function openEditDrawer(rule: CommissionRule) {
   form.fixed_amount = (rule.fixed_amount_minor || 0) / 100;
   form.priority = rule.priority || 0;
   form.confirmation_days = rule.confirmation_days || 14;
+  form.eligible_months = rule.eligible_months_from_conversion ?? 36;
 
   if (rule.tier_schedule && rule.tier_schedule.tiers) {
     form.tiers = rule.tier_schedule.tiers.map((t: any, idx: number) => ({
@@ -369,6 +457,19 @@ function openEditDrawer(rule: CommissionRule) {
       bonus: (t.fixed_bonus_minor || 0) / 100,
     }));
   }
+
+  if (rule.tier_schedule && rule.tier_schedule.tenure_tiers && rule.tier_schedule.tenure_tiers.length > 0) {
+    form.enableTenureDecay = true;
+    form.tenureTiers = rule.tier_schedule.tenure_tiers.map((tt: any, idx: number) => ({
+      tenure_name: tt.tenure_name || `Period ${idx + 1}`,
+      min_month: tt.min_month,
+      max_month: tt.max_month,
+      rate_percent: (tt.rate_bps || 1000) / 100,
+    }));
+  } else {
+    form.enableTenureDecay = false;
+  }
+
   drawerOpen.value = true;
 }
 
@@ -383,21 +484,37 @@ async function saveRule() {
       fixed_amount_minor: Math.round(form.fixed_amount * 100),
       priority: form.priority,
       confirmation_days: form.confirmation_days,
+      eligible_months_from_conversion: form.eligible_months || 36,
     };
 
+    let tierScheduleObj: any = {};
     if (form.commission_type === 'TIERED') {
-      payload.tier_schedule = {
-        type: 'PROGRESSIVE_VOLUME',
-        metric: 'CONFIRMED_SALES_COUNT',
-        tiers: form.tiers.map((t, idx) => ({
-          tier_number: idx + 1,
-          tier_name: t.tier_name,
-          min_count: t.min_count,
-          max_count: t.max_count || null,
-          rate_bps: Math.round(t.rate_percent * 100),
-          fixed_bonus_minor: Math.round(t.bonus * 100),
-        })),
-      };
+      tierScheduleObj.type = 'PROGRESSIVE_VOLUME';
+      tierScheduleObj.metric = 'CONFIRMED_SALES_COUNT';
+      tierScheduleObj.tiers = form.tiers.map((t, idx) => ({
+        tier_number: idx + 1,
+        tier_name: t.tier_name,
+        min_count: t.min_count,
+        max_count: t.max_count || null,
+        rate_bps: Math.round(t.rate_percent * 100),
+        fixed_bonus_minor: Math.round(t.bonus * 100),
+      }));
+    }
+
+    if (form.enableTenureDecay && form.tenureTiers.length > 0) {
+      tierScheduleObj.tenure_tiers = form.tenureTiers.map((tt, idx) => ({
+        tenure_number: idx + 1,
+        tenure_name: tt.tenure_name,
+        min_month: tt.min_month,
+        max_month: tt.max_month || null,
+        rate_bps: Math.round(tt.rate_percent * 100),
+      }));
+    }
+
+    if (Object.keys(tierScheduleObj).length > 0) {
+      payload.tier_schedule = tierScheduleObj;
+    } else {
+      payload.tier_schedule = null;
     }
 
     if (editingRule.value) {

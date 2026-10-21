@@ -43,6 +43,11 @@
           <span class="field__hint">e.g. 1 for first sale, 51 for milestone bonus tier.</span>
         </div>
         <div class="field">
+          <label class="field__label" for="sim-tenure">Customer Subscription Age / Tenure (Months)</label>
+          <input id="sim-tenure" v-model.number="form.customerTenureMonths" type="number" min="1" class="admin-input num-mono" />
+          <span class="field__hint">e.g. 6 (Year 1), 18 (Year 2), 30 (Year 3). Evaluates cost-decay adjustments.</span>
+        </div>
+        <div class="field">
           <label class="field__label" for="sim-amount">Net amount paid (৳)</label>
           <input id="sim-amount" v-model="form.amount" class="admin-input num-mono" inputmode="decimal" :aria-invalid="Boolean(amountError)" aria-describedby="sim-amount-hint" />
           <span v-if="amountError" class="field__error">{{ amountError }}</span>
@@ -81,7 +86,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import StateBlock from '../components/StateBlock.vue';
 import { api, formatMoney, type SimulationResult } from '../api';
 
-const form = reactive({ product: 'pulsepos', billingReason: 'initial', partnerType: 'INDIVIDUAL', amount: '20000', saleCount: 1 });
+const form = reactive({ product: 'pulsepos', billingReason: 'initial', partnerType: 'INDIVIDUAL', amount: '20000', saleCount: 1, customerTenureMonths: 1 });
 const result = ref<SimulationResult | null>(null);
 const resultKey = ref(0);
 const error = ref<unknown>(null);
@@ -111,6 +116,7 @@ async function simulate() {
       billing_reason: form.billingReason,
       amount_net_paid: amountMinor.value,
       sale_count: form.saleCount || 1,
+      customer_tenure_months: form.customerTenureMonths || 1,
       currency: 'BDT',
     });
     if (mine !== seq) return; // a newer request is in flight
@@ -141,9 +147,12 @@ const steps = computed(() => {
   const base = amountMinor.value ?? 0;
   if (!r) return [];
   const split = Object.entries(r.reward_split ?? { WALLET: 100 }).map(([k, v]) => `${v}% ${k.toLowerCase().replace('_', '-')}`).join(', ');
+  const tenureMo = r.customer_tenure_months ?? form.customerTenureMonths ?? 1;
+  const tenureYr = (tenureMo / 12).toFixed(1);
   return [
     { label: 'Base (net paid)', value: formatMoney(base) },
-    { label: 'Rate', value: `${r.rate_bps / 100}% (${r.rate_bps} bps)` },
+    { label: 'Customer tenure', value: `${tenureMo} months (~${tenureYr} years)` },
+    { label: 'Effective rate', value: `${r.rate_bps / 100}% (${r.rate_bps} bps)` },
     ...(r.max_commission_minor ? [{ label: 'Cap', value: formatMoney(r.max_commission_minor) }] : []),
     { label: 'Reward split', value: split },
     { label: 'Commission (rounded half-up once)', value: formatMoney(r.commission_amount_minor), total: true },

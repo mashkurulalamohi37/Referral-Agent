@@ -65,6 +65,39 @@ def test_progressive_volume_tier_calculation() -> None:
     c52 = commission_service.calculate_commission_amount(1000000, rule, sale_count=52)
     assert c52 == 150000
 
+def test_customer_tenure_decay_and_server_cost_adjustment() -> None:
+    """Tests commission rate changing over customer lifetime (e.g. 2y/3y tenure decay due to server costs)."""
+    rule = CommissionRule(
+        rule_name="SaaS Recurring Commission with Tenure Decay",
+        commission_type="PERCENTAGE",
+        rate_bps=2000,  # Base rate 20%
+        eligible_months_from_conversion=36,  # 3-year maximum eligible lifetime
+        tier_schedule={
+            "tenure_tiers": [
+                {"tenure_name": "Year 1 (Months 1-12)", "min_month": 1, "max_month": 12, "rate_bps": 2000},
+                {"tenure_name": "Year 2 (Months 13-24)", "min_month": 13, "max_month": 24, "rate_bps": 1500},
+                {"tenure_name": "Year 3 (Months 25-36)", "min_month": 25, "max_month": 36, "rate_bps": 1000},
+                {"tenure_name": "Year 4+ (Beyond 36m)", "min_month": 37, "max_month": None, "rate_bps": 0},
+            ],
+        },
+    )
+
+    # 10,000 BDT subscription (1,000,000 minor)
+    # Month 6 (Year 1): 20% = 200,000 minor
+    y1 = commission_service.calculate_commission_amount(1000000, rule, customer_tenure_months=6)
+    assert y1 == 200000
+
+    # Month 18 (Year 2 - server cost increased): 15% = 150,000 minor
+    y2 = commission_service.calculate_commission_amount(1000000, rule, customer_tenure_months=18)
+    assert y2 == 150000
+
+    # Month 30 (Year 3 - infra cost & maintenance): 10% = 100,000 minor
+    y3 = commission_service.calculate_commission_amount(1000000, rule, customer_tenure_months=30)
+    assert y3 == 100000
+
+    # Month 40 (Year 4 - beyond eligible cutoff): 0 minor (sunset)
+    y4 = commission_service.calculate_commission_amount(1000000, rule, customer_tenure_months=40)
+    assert y4 == 0
 
 async def test_dynamic_rule_crud(async_session: AsyncSession) -> None:
     """Tests dynamic creation, update and archiving of rules without redeployment."""

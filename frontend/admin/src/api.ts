@@ -129,6 +129,7 @@ export interface SimulationInput {
   billing_reason: string;
   amount_net_paid: number;
   sale_count?: number;
+  customer_tenure_months?: number;
   currency: string;
 }
 
@@ -140,6 +141,9 @@ export interface SimulationResult {
   rate_bps: number;
   specificity_score: number;
   sale_count?: number;
+  customer_tenure_months?: number;
+  customer_tenure_years?: number;
+  eligible_months_from_conversion?: number;
   tier_schedule?: any;
   reward_split: Record<string, number>;
   commission_type?: string;
@@ -159,6 +163,7 @@ export interface CommissionRule {
   currency: string;
   min_net_paid_minor?: number;
   max_commission_minor?: number | null;
+  eligible_months_from_conversion?: number;
   confirmation_days: number;
   priority: number;
   status: string;
