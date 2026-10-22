@@ -384,7 +384,7 @@ function RouteTransition() {
   const outlet = useOutlet();
   const { page } = usePresets();
   return (
-    <AnimatePresence mode="wait" initial={false}>
+    <AnimatePresence mode="wait" initial={true}>
       <m.div key={pathname} variants={page} initial="initial" animate="animate" exit="exit">
         {outlet}
       </m.div>

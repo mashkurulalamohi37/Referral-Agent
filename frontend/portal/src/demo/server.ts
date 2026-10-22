@@ -45,8 +45,10 @@ export function setDemoMode(on: boolean): void {
 const iso = (offsetDays: number) => new Date(Date.now() + offsetDays * DAY).toISOString();
 
 const products: Product[] = [
-  { id: 'p-healora', slug: 'healora', name: 'Healora', status: 'ACTIVE', confirmation_days: 14, referrer_visibility: 'NONE' },
   { id: 'p-pulsepos', slug: 'pulsepos', name: 'PulsePOS', status: 'ACTIVE', confirmation_days: 14, referrer_visibility: 'MASKED' },
+  { id: 'p-doctor-chamber', slug: 'doctor-chamber', name: 'Doctor Chamber', status: 'ACTIVE', confirmation_days: 14, referrer_visibility: 'NONE' },
+  { id: 'p-ecommerce', slug: 'ecommerce', name: 'E-commerce', status: 'ACTIVE', confirmation_days: 14, referrer_visibility: 'MASKED' },
+  { id: 'p-pharmacy-pos', slug: 'pharmacy-pos', name: 'Pharmacy POS', status: 'ACTIVE', confirmation_days: 14, referrer_visibility: 'MASKED' },
 ];
 
 const state = {
@@ -76,10 +78,10 @@ const state = {
   ] as ReferralCode[],
   commissions: [
     { id: 'cm1', product_id: 'p-pulsepos', payment_id: 'PP-PAY-2004', amount_minor: 15000, currency: 'BDT', status: 'PENDING', earned_at: iso(-3), confirmation_due_at: iso(11), confirmed_at: null },
-    { id: 'cm2', product_id: 'p-healora', payment_id: 'HLR-PAY-1188', amount_minor: 20000, currency: 'BDT', status: 'PENDING', earned_at: iso(-9), confirmation_due_at: iso(5), confirmed_at: null },
-    { id: 'cm3', product_id: 'p-healora', payment_id: 'HLR-PAY-1001', amount_minor: 20000, currency: 'BDT', status: 'AVAILABLE', earned_at: iso(-20), confirmation_due_at: iso(-6), confirmed_at: iso(-6) },
-    { id: 'cm4', product_id: 'p-pulsepos', payment_id: 'PP-PAY-1730', amount_minor: 128000, currency: 'BDT', status: 'AVAILABLE', earned_at: iso(-31), confirmation_due_at: iso(-17), confirmed_at: iso(-17) },
-    { id: 'cm5', product_id: 'p-pulsepos', payment_id: 'PP-PAY-1650', amount_minor: 15000, currency: 'BDT', status: 'REVERSED', earned_at: iso(-35), confirmation_due_at: iso(-21), confirmed_at: iso(-21) },
+    { id: 'cm2', product_id: 'p-doctor-chamber', payment_id: 'DC-PAY-1188', amount_minor: 20000, currency: 'BDT', status: 'PENDING', earned_at: iso(-9), confirmation_due_at: iso(5), confirmed_at: null },
+    { id: 'cm3', product_id: 'p-doctor-chamber', payment_id: 'DC-PAY-1001', amount_minor: 20000, currency: 'BDT', status: 'AVAILABLE', earned_at: iso(-20), confirmation_due_at: iso(-6), confirmed_at: iso(-6) },
+    { id: 'cm4', product_id: 'p-ecommerce', payment_id: 'ECM-PAY-1730', amount_minor: 128000, currency: 'BDT', status: 'AVAILABLE', earned_at: iso(-31), confirmation_due_at: iso(-17), confirmed_at: iso(-17) },
+    { id: 'cm5', product_id: 'p-pharmacy-pos', payment_id: 'PHM-PAY-1650', amount_minor: 15000, currency: 'BDT', status: 'REVERSED', earned_at: iso(-35), confirmation_due_at: iso(-21), confirmed_at: iso(-21) },
   ] as Commission[],
   methods: [
     { id: 'pm1', method: 'bkash', masked_identifier: '017*******89', status: 'ACTIVE', verified_at: iso(-30) },
@@ -89,7 +91,7 @@ const state = {
   ] as Payout[],
   notifications: [
     { id: 'n1', title: 'You earned a commission', message: 'A PulsePOS referral subscribed. ৳150 is on hold for 14 days.', category: 'commission', status: 'SENT', read_at: null, created_at: iso(-3) },
-    { id: 'n2', title: 'Money is ready to withdraw', message: '৳200 from a Healora referral is now withdrawable.', category: 'commission', status: 'SENT', read_at: null, created_at: iso(-6) },
+    { id: 'n2', title: 'Money is ready to withdraw', message: '৳200 from a Doctor Chamber referral is now withdrawable.', category: 'commission', status: 'SENT', read_at: null, created_at: iso(-6) },
     { id: 'n3', title: 'Withdrawal paid', message: '৳5,000 was sent to your bKash account.', category: 'payout', status: 'SENT', read_at: iso(-17), created_at: iso(-18) },
   ] as AppNotification[],
   transactions: [
@@ -135,8 +137,8 @@ const state = {
     },
     {
       id: 'tkt-2',
-      ticket_number: 'TKT-HEALORA-0005',
-      product_slug: 'healora',
+      ticket_number: 'TKT-DC-0005',
+      product_slug: 'doctor-chamber',
       title: 'Video consultation connection drop',
       category: 'CRASH',
       severity: 'HIGH',
@@ -161,7 +163,7 @@ const state = {
           id: 'msg-4',
           ticket_id: 'tkt-2',
           sender_type: 'SUPPORT_ENGINEER',
-          sender_name: 'Healora Platform Team',
+          sender_name: 'Doctor Chamber Platform Team',
           body: 'Resolved in patch v2.4.1. WebRTC session timeout has been increased to 1 hour.',
           created_at: iso(-8),
         },
@@ -174,10 +176,10 @@ const referrals: ReferralsPage = {
   items: [
     { referral_id: 'r1', product: 'pulsepos', display_name: 'T****r', status: 'CONVERTED', attributed_at: iso(-34), converted_at: iso(-31) },
     { referral_id: 'r2', product: 'pulsepos', display_name: 'S****a', status: 'ACTIVE', attributed_at: iso(-5), converted_at: iso(-3) },
-    { referral_id: 'r3', product: 'pulsepos', display_name: 'A****h', status: 'TRIALING', attributed_at: iso(-2), converted_at: null },
+    { referral_id: 'r3', product: 'doctor-chamber', display_name: 'A****h', status: 'TRIALING', attributed_at: iso(-2), converted_at: null },
   ],
   next_cursor: null,
-  aggregates: [{ product: 'healora', referrals: 3, converted: 2 }],
+  aggregates: [{ product: 'doctor-chamber', referrals: 3, converted: 2 }],
 };
 
 function delay<T>(value: T): Promise<T> {
@@ -216,7 +218,16 @@ export async function demoFetch<T>(path: string, options: { method?: string; bod
       const theme: ProductTheme = {
         slug: slug ?? '',
         name: p?.name ?? slug ?? '',
-        theme: slug === 'healora' ? { primary: '#0e7490' } : slug === 'pulsepos' ? { primary: '#c2410c' } : {},
+        theme:
+          slug === 'doctor-chamber'
+            ? { primary: '#0284c7' }
+            : slug === 'pulsepos'
+            ? { primary: '#c2410c' }
+            : slug === 'ecommerce'
+            ? { primary: '#7c3aed' }
+            : slug === 'pharmacy-pos'
+            ? { primary: '#059669' }
+            : {},
       };
       return delay(theme as T);
     }
