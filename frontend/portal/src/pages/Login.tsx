@@ -57,7 +57,21 @@ export function Login() {
           companyName: agentType === 'COMPANY' ? companyName.trim() : undefined,
         });
       } else {
-        await signIn(email.trim(), password);
+        const tokenRes = await signIn(email.trim(), password);
+        try {
+          const payload = JSON.parse(atob(tokenRes.access_token.split('.')[1]));
+          const roles: string[] = Array.isArray(payload?.roles) ? payload.roles : [];
+          if (roles.includes('ADMIN') || roles.includes('SUPER_ADMIN')) {
+            const isAdminDirect = window.location.port === '3015';
+            const adminUrl = isAdminDirect
+              ? `${window.location.protocol}//${window.location.hostname}:3016/?token=${encodeURIComponent(tokenRes.access_token)}`
+              : `/admin/?token=${encodeURIComponent(tokenRes.access_token)}`;
+            window.location.href = adminUrl;
+            return;
+          }
+        } catch {
+          // ignore error and proceed to partner dashboard
+        }
       }
       navigate(from, { replace: true });
     } catch (err) {

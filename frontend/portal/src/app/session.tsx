@@ -11,7 +11,7 @@ interface SessionApi {
   signedIn: boolean;
   demo: boolean;
   me: Me | undefined;
-  signIn: (email: string, password: string) => Promise<void>;
+  signIn: (email: string, password: string) => Promise<TokenPair>;
   signUp: (data: { displayName: string; email: string; password: string; phone?: string; agentType?: 'INDIVIDUAL' | 'COMPANY'; companyName?: string }) => Promise<void>;
   exchangeHandoff: (token: string) => Promise<void>;
   startDemo: () => void;
@@ -44,10 +44,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [meQuery.error]);
 
   const signIn = useCallback(
-    async (email: string, password: string) => {
+    async (email: string, password: string): Promise<TokenPair> => {
       const tokens = await api<TokenPair>('/v1/auth/login', { method: 'POST', body: { email, password }, anonymous: true });
       setTokens(tokens);
+      try {
+        sessionStorage.setItem('admin.access', tokens.access_token);
+      } catch {
+        // ignore
+      }
       await qc.invalidateQueries();
+      return tokens;
     },
     [qc],
   );

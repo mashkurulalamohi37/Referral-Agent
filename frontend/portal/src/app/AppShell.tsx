@@ -19,6 +19,7 @@ import {
   MessageSquarePlus,
   Monitor,
   Moon,
+  ShieldCheck,
   Sparkles,
   Sun,
   UserRound,
@@ -28,6 +29,7 @@ import {
 } from 'lucide-react';
 import { useBrand } from './brand';
 import { useSession } from './session';
+import { getAccessToken } from '../lib/auth';
 import { setLocale, type Locale } from '../i18n';
 import { useMarkNotificationRead, useMyTickets, useNotifications } from '../lib/queries';
 import { formatRelative } from '../lib/format';
@@ -64,11 +66,13 @@ function BrandMark({ compact }: { compact?: boolean }) {
 
 function Sidebar() {
   const { t } = useTranslation();
+  const { me } = useSession();
   const { pathname, search } = useLocation();
   const { spring } = usePresets();
   const [supportOpen, setSupportOpen] = useState(() => pathname.startsWith('/support'));
   const ticketsQuery = useMyTickets();
   const ticketCount = ticketsQuery.data?.length ?? 0;
+  const isAdmin = me?.roles?.some((r) => ['ADMIN', 'SUPER_ADMIN'].includes(r));
 
   useEffect(() => {
     if (pathname.startsWith('/support')) {
@@ -195,6 +199,42 @@ function Sidebar() {
               </li>
             );
           })}
+          {isAdmin && (
+            <li style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border-subtle)' }}>
+              <a
+                href={
+                  window.location.port === '3015'
+                    ? `${window.location.protocol}//${window.location.hostname}:3016/?token=${encodeURIComponent(getAccessToken() || '')}`
+                    : `/admin/?token=${encodeURIComponent(getAccessToken() || '')}`
+                }
+                className="nav-link"
+                style={{
+                  background: 'var(--brand-subtle)',
+                  color: 'var(--brand)',
+                  fontWeight: 750,
+                  border: '1.5px solid var(--brand-border)',
+                  borderRadius: 'var(--radius-md)',
+                  boxShadow: '0 2px 8px color-mix(in srgb, var(--brand) 15%, transparent)',
+                }}
+              >
+                <ShieldCheck size={18} />
+                <span>Operations Console</span>
+                <span
+                  style={{
+                    background: 'var(--brand)',
+                    color: '#ffffff',
+                    fontSize: '0.625rem',
+                    fontWeight: 800,
+                    padding: '2px 6px',
+                    borderRadius: 10,
+                    marginLeft: 'auto',
+                  }}
+                >
+                  ADMIN
+                </span>
+              </a>
+            </li>
+          )}
         </ul>
       </nav>
     </aside>
