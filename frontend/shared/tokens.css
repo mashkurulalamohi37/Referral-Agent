@@ -32,75 +32,83 @@
   --space-12: 48px;
 
   /* Radii */
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-  --radius-xl: 20px;
+  /* Radii - Generous modern rounded corners from reference image */
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 24px;
+  --radius-xl: 28px;
   --radius-full: 9999px;
 
-  /* Brand (overridden per product by the theme loader) */
-  --brand: #4f46e5;
-  --brand-hover: #4338ca;
-  --brand-active: #3730a3;
-  --brand-subtle: #eef2ff;
-  --brand-border: #c7d2fe;
+  /* Brand - Royal Indigo / Periwinkle from reference picture */
+  --brand: #5865f2;
+  --brand-hover: #4752c4;
+  --brand-active: #3c45a5;
+  --brand-subtle: #eef0fe;
+  --brand-border: #c7cdfc;
   --on-brand: #ffffff;
 
-  /* Surfaces */
-  --bg-canvas: #f6f7fb;
+  /* Electric Lime from reference picture */
+  --lime: #b5f532;
+  --lime-hover: #a2e622;
+  --lime-subtle: #f4fde6;
+  --lime-border: #d4faa0;
+  --on-lime: #111827;
+
+  /* Surfaces: Soft silver-gray bento canvas + pure white floating cards */
+  --bg-canvas: #edf0f4;
   --bg-surface: #ffffff;
   --bg-raised: #ffffff;
-  --bg-subtle: #f1f3f8;
-  --bg-hover: #f5f6fa;
-  --bg-active: #e8ebf2;
+  --bg-subtle: #f8fafc;
+  --bg-hover: #f1f5f9;
+  --bg-active: #e2e8f0;
   --bg-overlay: rgba(15, 23, 42, 0.45);
 
-  /* Borders */
-  --border-subtle: #e4e7ef;
-  --border-default: #cfd5e1;
-  --border-strong: #9aa4b6;
+  /* Borders: ultra-clean, minimal, soft */
+  --border-subtle: #edf0f5;
+  --border-default: #e2e8f0;
+  --border-strong: #cbd5e1;
 
-  /* Text */
-  --text-main: #0f172a;
-  --text-muted: #4b5568;
-  --text-tertiary: #5c6678; /* ≥ 4.5:1 on surface and on --bg-subtle */
+  /* Text: Obsidian charcoal headings, slate readable body */
+  --text-main: #111827;
+  --text-muted: #64748b;
+  --text-tertiary: #94a3b8;
   --text-inverse: #ffffff;
 
   /* Status */
-  --success: #047857;
+  --success: #10b981;
   --success-subtle: #ecfdf5;
   --success-border: #a7f3d0;
-  --warning: #b45309;
+  --warning: #f59e0b;
   --warning-subtle: #fffbeb;
-  --warning-border: #fcd34d;
-  --danger: #b91c1c;
+  --warning-border: #fde68a;
+  --danger: #ef4444;
   --danger-subtle: #fef2f2;
   --danger-border: #fecaca;
-  --info: #0369a1;
+  --info: #0ea5e9;
   --info-subtle: #f0f9ff;
   --info-border: #bae6fd;
 
-  /* Money buckets (stacked balance bar) */
-  --bucket-ready: #10b981;
-  --bucket-hold: #f59e0b;
-  --bucket-credit: #6366f1;
-  --bucket-onway: #0ea5e9;
+  /* Money / Progress Buckets: Electric Lime & Royal Indigo exactly as in reference image */
+  --bucket-ready: #b5f532;
+  --bucket-hold: #5865f2;
+  --bucket-credit: #0ea5e9;
+  --bucket-onway: #cbd5e1;
 
-  /* Elevation */
-  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.05);
-  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.07), 0 1px 2px rgba(15, 23, 42, 0.04);
-  --shadow-md: 0 6px 16px -4px rgba(15, 23, 42, 0.1), 0 2px 4px -2px rgba(15, 23, 42, 0.05);
-  --shadow-lg: 0 18px 40px -12px rgba(15, 23, 42, 0.22);
-  --focus-ring: 0 0 0 3px color-mix(in srgb, var(--brand) 35%, transparent);
+  /* Elevation: Soft, multi-layered diffuse drop shadows for floating white slabs */
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.03);
+  --shadow-sm: 0 2px 4px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 8px 20px -4px rgba(15, 23, 42, 0.06);
+  --shadow-lg: 0 16px 36px -8px rgba(15, 23, 42, 0.08);
+  --focus-ring: 0 0 0 3px color-mix(in srgb, var(--brand) 30%, transparent);
 
-  /* Glassmorphism & Soft Depth (UI/UX Pro Max) */
-  --glass-bg: rgba(255, 255, 255, 0.85);
-  --glass-border: rgba(255, 255, 255, 0.7);
+  /* Glassmorphism & Soft Depth */
+  --glass-bg: rgba(255, 255, 255, 0.92);
+  --glass-border: rgba(255, 255, 255, 0.85);
   --glass-blur: blur(14px) saturate(180%);
-  --card-inner-highlight: inset 0 1px 0 0 rgba(255, 255, 255, 0.9);
-  --shadow-card: 0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(15, 23, 42, 0.03);
-  --shadow-card-hover: 0 12px 32px -4px rgba(15, 23, 42, 0.1), 0 2px 6px -1px rgba(15, 23, 42, 0.05);
-  --brand-glow: 0 4px 16px -2px rgba(79, 70, 229, 0.28);
+  --card-inner-highlight: inset 0 1px 0 0 rgba(255, 255, 255, 0.95);
+  --shadow-card: 0 10px 30px -4px rgba(15, 23, 42, 0.04), 0 2px 6px -1px rgba(15, 23, 42, 0.02);
+  --shadow-card-hover: 0 20px 40px -8px rgba(15, 23, 42, 0.08), 0 4px 12px -2px rgba(15, 23, 42, 0.03);
+  --brand-glow: 0 4px 18px -2px rgba(88, 101, 242, 0.3);
 
   /* Motion (plan §5). Zeroed for reduced motion below. */
   --motion-fast: 120ms;
@@ -159,6 +167,17 @@
     --shadow-md: 0 8px 24px -4px rgba(0, 0, 0, 0.7);
     --shadow-lg: 0 24px 48px -12px rgba(0, 0, 0, 0.85);
 
+    /* Money buckets (stacked balance bar matching reference image) */
+    --lime: #b5f532;
+    --lime-hover: #c4f757;
+    --lime-subtle: rgba(181, 245, 50, 0.16);
+    --lime-border: rgba(181, 245, 50, 0.45);
+    --on-lime: #080c14;
+    --bucket-ready: #b5f532;
+    --bucket-hold: #6366f1;
+    --bucket-credit: #38bdf8;
+    --bucket-onway: #475569;
+
     /* Glassmorphism & Depth in Dark Mode */
     --glass-bg: rgba(15, 23, 42, 0.85);
     --glass-border: rgba(255, 255, 255, 0.12);
@@ -208,6 +227,17 @@
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.6);
   --shadow-md: 0 8px 24px -4px rgba(0, 0, 0, 0.7);
   --shadow-lg: 0 24px 48px -12px rgba(0, 0, 0, 0.85);
+
+  /* Money buckets */
+  --lime: #b5f532;
+  --lime-hover: #c4f757;
+  --lime-subtle: rgba(181, 245, 50, 0.16);
+  --lime-border: rgba(181, 245, 50, 0.45);
+  --on-lime: #080c14;
+  --bucket-ready: #b5f532;
+  --bucket-hold: #6366f1;
+  --bucket-credit: #38bdf8;
+  --bucket-onway: #475569;
 
   /* Glassmorphism & Depth in Dark Mode */
   --glass-bg: rgba(15, 23, 42, 0.85);

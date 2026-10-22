@@ -90,9 +90,9 @@ export function applyBrandColor(hex: string | null | undefined): void {
 export function getColorSchemePref(): ColorSchemePref {
   try {
     const v = window.localStorage.getItem(PREF_KEY);
-    return v === 'light' || v === 'dark' ? v : 'system';
+    return v === 'light' || v === 'dark' ? v : 'light';
   } catch {
-    return 'system';
+    return 'light';
   }
 }
 

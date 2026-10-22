@@ -27,7 +27,8 @@ export function BalanceBreakdown({ wallet, holdDays }: { wallet: WalletBalances;
             .map((s, i) => (
               <m.span
                 key={s.key}
-                className="balance-bar__seg"
+                data-key={s.key}
+                className={`balance-bar__seg balance-bar__seg--${s.key}`}
                 style={{ flexGrow: s.value, flexBasis: 0, background: s.color }}
                 initial={{ scaleX: reduce ? 1 : 0 }}
                 animate={{ scaleX: 1 }}
@@ -38,7 +39,7 @@ export function BalanceBreakdown({ wallet, holdDays }: { wallet: WalletBalances;
       <ul className="legend" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
         {segments.map((s) => (
           <li key={s.key} className="legend__item">
-            <span className="legend__swatch" style={{ background: s.color }} aria-hidden="true" />
+            <span className={`legend__swatch legend__swatch--${s.key}`} data-key={s.key} style={{ background: s.color }} aria-hidden="true" />
             <div>
               <div className="row" style={{ gap: 2 }}>
                 <span className="xsmall muted strong">{t(`buckets.${s.key}`)}</span>
