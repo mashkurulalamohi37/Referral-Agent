@@ -2,7 +2,9 @@ import { useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from 'r
 import { AnimatePresence, m } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
-import { AlertCircle, ArrowLeft, ArrowRight, Lock, Plus, ShieldCheck } from 'lucide-react';
+import { AlertCircle, ArrowLeft, ArrowRight, Building2, Lock, Plus, ShieldCheck } from 'lucide-react';
+import bkashLogo from '../assets/bkash.png';
+import nagadLogo from '../assets/nagad.png';
 import { useSession } from '../app/session';
 import { PROGRAM } from '../app/program';
 import { parseMoney } from '../lib/money';
@@ -20,10 +22,23 @@ import { usePresets } from '../ui/motion';
 /* ------------------------------------------------------------------ helpers */
 
 function MethodIcon({ method }: { method: string }) {
-  const label = method === 'bkash' ? 'bK' : method === 'nagad' ? 'N' : 'BANK';
+  if (method === 'bkash') {
+    return (
+      <span className="method-icon method-icon--bkash" aria-hidden="true">
+        <img src={bkashLogo} alt="bKash" className="method-icon__img" />
+      </span>
+    );
+  }
+  if (method === 'nagad') {
+    return (
+      <span className="method-icon method-icon--nagad" aria-hidden="true">
+        <img src={nagadLogo} alt="Nagad" className="method-icon__img" />
+      </span>
+    );
+  }
   return (
-    <span className={`method-icon method-icon--${method}`} aria-hidden="true">
-      {label}
+    <span className="method-icon method-icon--bank_transfer" aria-hidden="true">
+      <Building2 size={20} strokeWidth={2.2} />
     </span>
   );
 }

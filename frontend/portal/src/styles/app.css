@@ -519,19 +519,49 @@
 .choice:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 
 .method-icon {
-  display: grid;
-  place-items: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
   width: 40px;
   height: 40px;
   border-radius: var(--radius-md);
+  overflow: hidden;
+  position: relative;
   font-weight: 800;
   font-size: var(--text-xs);
   color: #fff;
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  background: var(--bg-surface);
 }
-.method-icon--bkash { background: #e2136e; }
-.method-icon--nagad { background: #ec6c1d; }
-.method-icon--bank_transfer { background: #2563eb; }
+.method-icon__img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  user-select: none;
+  pointer-events: none;
+}
+.method-icon--bkash {
+  background: #d12053;
+  border-color: rgba(209, 32, 83, 0.3);
+}
+.method-icon--bkash .method-icon__img {
+  object-fit: cover;
+}
+.method-icon--nagad {
+  background: #ffffff;
+  border-color: rgba(236, 108, 29, 0.3);
+}
+.method-icon--nagad .method-icon__img {
+  object-fit: contain;
+  padding: 3px;
+}
+.method-icon--bank_transfer {
+  background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
+  border-color: rgba(37, 99, 235, 0.35);
+  color: #ffffff;
+}
 
 /* ================================================================== misc components */
 

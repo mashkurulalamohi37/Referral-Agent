@@ -77,8 +77,16 @@
         <dl class="kv">
           <dt>Partner</dt><dd class="num-mono">{{ selected.user_id }}</dd>
           <dt>Gross</dt><dd class="num-mono">{{ formatMoney(selected.amount_minor, selected.currency) }}</dd>
-          <dt>Net to send</dt><dd class="num-mono strong">{{ formatMoney(selected.net_minor, selected.currency) }}</dd>
-          <dt>Provider</dt><dd>{{ selected.provider }}</dd>
+          <dt>Provider</dt>
+          <dd style="display: flex; align-items: center; gap: 8px">
+            <span v-if="selected.provider.toLowerCase().includes('bkash')" class="admin-method-badge admin-method-badge--bkash">
+              <img src="/bkash.png" alt="bKash" />
+            </span>
+            <span v-else-if="selected.provider.toLowerCase().includes('nagad')" class="admin-method-badge admin-method-badge--nagad">
+              <img src="/nagad.png" alt="Nagad" />
+            </span>
+            <span style="font-weight: 600; text-transform: capitalize">{{ selected.provider }}</span>
+          </dd>
           <dt>Transfer ref</dt><dd class="num-mono">{{ selected.provider_ref ?? '—' }}</dd>
           <dt>Requested</dt><dd>{{ formatDateTime(selected.created_at) }}</dd>
         </dl>
