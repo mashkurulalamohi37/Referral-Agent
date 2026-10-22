@@ -54,24 +54,24 @@
   --lime-border: #d4faa0;
   --on-lime: #111827;
 
-  /* Surfaces: Soft silver-gray bento canvas + pure white floating cards */
-  --bg-canvas: #edf0f4;
+  /* Surfaces: Richer silver-slate bento canvas + pure white floating cards */
+  --bg-canvas: #e2e8f0;
   --bg-surface: #ffffff;
   --bg-raised: #ffffff;
-  --bg-subtle: #f8fafc;
-  --bg-hover: #f1f5f9;
-  --bg-active: #e2e8f0;
-  --bg-overlay: rgba(15, 23, 42, 0.45);
+  --bg-subtle: #f1f5f9;
+  --bg-hover: #e2e8f0;
+  --bg-active: #cbd5e1;
+  --bg-overlay: rgba(15, 23, 42, 0.55);
 
-  /* Borders: ultra-clean, minimal, soft */
-  --border-subtle: #edf0f5;
-  --border-default: #e2e8f0;
-  --border-strong: #cbd5e1;
+  /* Borders: crisp, bold, clearly defined */
+  --border-subtle: #cbd5e1;
+  --border-default: #94a3b8;
+  --border-strong: #64748b;
 
-  /* Text: Obsidian charcoal headings, slate readable body */
-  --text-main: #111827;
-  --text-muted: #64748b;
-  --text-tertiary: #94a3b8;
+  /* Text: Ultra-bold black headings & deep slate body for maximum visibility */
+  --text-main: #000000;
+  --text-muted: #1e293b;
+  --text-tertiary: #475569;
   --text-inverse: #ffffff;
 
   /* Status */
@@ -102,12 +102,12 @@
   --focus-ring: 0 0 0 3px color-mix(in srgb, var(--brand) 30%, transparent);
 
   /* Glassmorphism & Soft Depth */
-  --glass-bg: rgba(255, 255, 255, 0.92);
-  --glass-border: rgba(255, 255, 255, 0.85);
+  --glass-bg: rgba(255, 255, 255, 0.94);
+  --glass-border: rgba(255, 255, 255, 0.9);
   --glass-blur: blur(14px) saturate(180%);
   --card-inner-highlight: inset 0 1px 0 0 rgba(255, 255, 255, 0.95);
-  --shadow-card: 0 10px 30px -4px rgba(15, 23, 42, 0.04), 0 2px 6px -1px rgba(15, 23, 42, 0.02);
-  --shadow-card-hover: 0 20px 40px -8px rgba(15, 23, 42, 0.08), 0 4px 12px -2px rgba(15, 23, 42, 0.03);
+  --shadow-card: 0 4px 24px -2px rgba(15, 23, 42, 0.08), 0 2px 6px -1px rgba(15, 23, 42, 0.04);
+  --shadow-card-hover: 0 20px 40px -8px rgba(15, 23, 42, 0.12), 0 4px 12px -2px rgba(15, 23, 42, 0.06);
   --brand-glow: 0 4px 18px -2px rgba(88, 101, 242, 0.3);
 
   /* Motion (plan §5). Zeroed for reduced motion below. */

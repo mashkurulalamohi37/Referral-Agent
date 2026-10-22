@@ -53,7 +53,7 @@ export function Support() {
   // Form State
   const [subject, setSubject] = useState('');
   const [department, setDepartment] = useState('Technical Support');
-  const [relatedService, setRelatedService] = useState<'pulsepos' | 'doctor-chamber' | 'ecommerce' | 'pharmacy-pos' | 'healora' | 'none'>('pulsepos');
+  const [relatedService, setRelatedService] = useState<'pulsepos' | 'doctor-chamber' | 'ecommerce' | 'pharmacy-pos' | 'none'>('pulsepos');
   const [priority, setPriority] = useState<'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'>('MEDIUM');
   const [message, setMessage] = useState('');
   const [isPreview, setIsPreview] = useState(false);
@@ -185,13 +185,13 @@ export function Support() {
   const getPriorityBadge = (prio: string) => {
     switch (prio) {
       case 'CRITICAL':
-        return <span style={{ color: 'var(--danger)', fontWeight: 700, fontSize: '0.8125rem' }}>CRITICAL</span>;
+        return <span style={{ color: 'var(--danger)', fontWeight: 800, fontSize: '0.8125rem' }}>CRITICAL</span>;
       case 'HIGH':
-        return <span style={{ color: 'var(--warning)', fontWeight: 700, fontSize: '0.8125rem' }}>HIGH</span>;
+        return <span style={{ color: 'var(--warning)', fontWeight: 800, fontSize: '0.8125rem' }}>HIGH</span>;
       case 'LOW':
-        return <span style={{ color: '#94a3b8', fontWeight: 600, fontSize: '0.8125rem' }}>LOW</span>;
+        return <span style={{ color: 'var(--text-tertiary)', fontWeight: 700, fontSize: '0.8125rem' }}>LOW</span>;
       default:
-        return <span style={{ color: '#cbd5e1', fontWeight: 600, fontSize: '0.8125rem' }}>MEDIUM</span>;
+        return <span style={{ color: 'var(--text-muted)', fontWeight: 700, fontSize: '0.8125rem' }}>MEDIUM</span>;
     }
   };
 
@@ -206,11 +206,11 @@ export function Support() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  borderBottom: '1px solid #1e2c40',
+                  borderBottom: '1px solid var(--border-subtle)',
                   paddingBottom: 16,
                 }}
               >
-                <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#f8fafc', margin: 0 }}>
+                <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>
                   {t('support.openTicket')}
                 </h1>
                 <div
@@ -220,15 +220,15 @@ export function Support() {
                     gap: 6,
                     padding: '4px 10px',
                     borderRadius: 20,
-                    background: 'rgba(16, 185, 129, 0.1)',
-                    border: '1px solid rgba(16, 185, 129, 0.3)',
-                    color: '#34d399',
+                    background: 'var(--success-subtle)',
+                    border: '1px solid var(--success-border)',
+                    color: 'var(--success)',
                     fontSize: '0.75rem',
-                    fontWeight: 600,
+                    fontWeight: 700,
                   }}
                 >
                   <span
-                    style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981' }}
+                    style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--success)' }}
                   />
                   <span>Engineers Online</span>
                 </div>
@@ -240,7 +240,7 @@ export function Support() {
                   <div>
                     <label
                       htmlFor="user-name"
-                      style={{ display: 'block', fontSize: '0.8125rem', color: '#94a3b8', marginBottom: 6, fontWeight: 500 }}
+                      style={{ display: 'block', fontSize: '0.8125rem', color: 'var(--text-main)', marginBottom: 6, fontWeight: 700 }}
                     >
                       {t('account.name')}
                     </label>
@@ -256,7 +256,7 @@ export function Support() {
                   <div>
                     <label
                       htmlFor="user-email"
-                      style={{ display: 'block', fontSize: '0.8125rem', color: '#94a3b8', marginBottom: 6, fontWeight: 500 }}
+                      style={{ display: 'block', fontSize: '0.8125rem', color: 'var(--text-main)', marginBottom: 6, fontWeight: 700 }}
                     >
                       {t('account.email')}
                     </label>
@@ -275,7 +275,7 @@ export function Support() {
                 <div>
                   <label
                     htmlFor="ticket-subject"
-                    style={{ display: 'block', fontSize: '0.8125rem', color: '#94a3b8', marginBottom: 6, fontWeight: 500 }}
+                    style={{ display: 'block', fontSize: '0.8125rem', color: 'var(--text-main)', marginBottom: 6, fontWeight: 700 }}
                   >
                     {t('support.subject')} <span style={{ color: 'var(--danger)' }}>*</span>
                   </label>
@@ -295,7 +295,7 @@ export function Support() {
                   <div>
                     <label
                       htmlFor="ticket-dept"
-                      style={{ display: 'block', fontSize: '0.8125rem', color: '#94a3b8', marginBottom: 6, fontWeight: 500 }}
+                      style={{ display: 'block', fontSize: '0.8125rem', color: 'var(--text-main)', marginBottom: 6, fontWeight: 700 }}
                     >
                       {t('support.department')}
                     </label>
@@ -315,7 +315,7 @@ export function Support() {
                   <div>
                     <label
                       htmlFor="ticket-service"
-                      style={{ display: 'block', fontSize: '0.8125rem', color: '#94a3b8', marginBottom: 6, fontWeight: 500 }}
+                      style={{ display: 'block', fontSize: '0.8125rem', color: 'var(--text-main)', marginBottom: 6, fontWeight: 700 }}
                     >
                       {t('support.relatedService')}
                     </label>
@@ -336,7 +336,7 @@ export function Support() {
                   <div>
                     <label
                       htmlFor="ticket-priority"
-                      style={{ display: 'block', fontSize: '0.8125rem', color: '#94a3b8', marginBottom: 6, fontWeight: 500 }}
+                      style={{ display: 'block', fontSize: '0.8125rem', color: 'var(--text-main)', marginBottom: 6, fontWeight: 700 }}
                     >
                       {t('support.priority')}
                     </label>
@@ -354,21 +354,21 @@ export function Support() {
                   </div>
                 </div>
 
-                {/* Healora Privacy Notice if Healora selected */}
-                {relatedService === 'healora' && (
+                {/* Doctor Chamber Privacy Notice if Doctor Chamber selected */}
+                {relatedService === 'doctor-chamber' && (
                   <div
                     style={{
                       padding: '12px 14px',
                       borderRadius: 8,
-                      background: 'rgba(234, 179, 8, 0.12)',
-                      border: '1px solid rgba(234, 179, 8, 0.3)',
+                      background: 'var(--warning-subtle)',
+                      border: '1px solid var(--warning-border)',
                       display: 'flex',
                       gap: 10,
                       alignItems: 'center',
                     }}
                   >
                     <ShieldAlert size={18} color="var(--warning)" style={{ flexShrink: 0 }} />
-                    <span style={{ fontSize: '0.8125rem', color: '#fef08a' }}>
+                    <span style={{ fontSize: '0.8125rem', color: 'var(--text-main)', fontWeight: 600 }}>
                       {t('support.healoraPrivacyNotice')}
                     </span>
                   </div>
@@ -378,7 +378,7 @@ export function Support() {
                 <div>
                   <label
                     htmlFor="ticket-message"
-                    style={{ display: 'block', fontSize: '0.8125rem', color: '#94a3b8', marginBottom: 6, fontWeight: 500 }}
+                    style={{ display: 'block', fontSize: '0.8125rem', color: 'var(--text-main)', marginBottom: 6, fontWeight: 700 }}
                   >
                     {t('support.message')} <span style={{ color: 'var(--danger)' }}>*</span>
                   </label>
@@ -411,7 +411,7 @@ export function Support() {
                       >
                         H
                       </button>
-                      <span style={{ width: 1, height: 16, background: '#283952', margin: '0 4px' }} />
+                      <span style={{ width: 1, height: 16, background: 'var(--border-subtle)', margin: '0 4px' }} />
                       <button
                         type="button"
                         className="support-toolbar-btn"
@@ -452,7 +452,7 @@ export function Support() {
                       >
                         ❝
                       </button>
-                      <span style={{ width: 1, height: 16, background: '#283952', margin: '0 4px' }} />
+                      <span style={{ width: 1, height: 16, background: 'var(--border-subtle)', margin: '0 4px' }} />
                       <button
                         type="button"
                         className={`support-toolbar-btn ${isPreview ? 'active' : ''}`}
@@ -479,14 +479,14 @@ export function Support() {
                         style={{
                           minHeight: 200,
                           padding: '14px 16px',
-                          background: '#131b2a',
-                          color: '#e2e8f0',
+                          background: 'var(--bg-subtle)',
+                          color: 'var(--text-main)',
                           fontSize: '0.875rem',
                           whiteSpace: 'pre-wrap',
                           lineHeight: 1.6,
                         }}
                       >
-                        {message || <span style={{ color: '#64748b' }}>Nothing to preview</span>}
+                        {message || <span style={{ color: 'var(--text-tertiary)' }}>Nothing to preview</span>}
                       </div>
                     ) : (
                       <textarea
@@ -505,7 +505,7 @@ export function Support() {
                     <div className="support-editor-footer">
                       <span>lines: {lineCount}</span>
                       <span>words: {wordCount}</span>
-                      <span style={{ color: '#10b981' }}>saved</span>
+                      <span style={{ color: 'var(--success)', fontWeight: 600 }}>saved</span>
                     </div>
                   </div>
                 </div>
@@ -513,7 +513,7 @@ export function Support() {
                 {/* Row 5: Attachments */}
                 <div>
                   <label
-                    style={{ display: 'block', fontSize: '0.8125rem', color: '#94a3b8', marginBottom: 6, fontWeight: 500 }}
+                    style={{ display: 'block', fontSize: '0.8125rem', color: 'var(--text-main)', marginBottom: 6, fontWeight: 700 }}
                   >
                     {t('support.attachments')}
                   </label>
@@ -538,14 +538,15 @@ export function Support() {
                           padding: '4px 10px',
                           fontSize: '0.75rem',
                           marginRight: 10,
-                          background: '#24354e',
-                          borderColor: '#384d6e',
-                          color: '#f1f5f9',
+                          background: 'var(--bg-subtle)',
+                          borderColor: 'var(--border-default)',
+                          color: 'var(--text-main)',
+                          fontWeight: 600,
                         }}
                       >
                         {t('support.chooseFile')}
                       </button>
-                      <span style={{ color: '#64748b', fontSize: '0.8125rem' }}>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
                         {attachments.length > 0
                           ? `${attachments.length} file(s) attached`
                           : t('support.noFileChosen')}
@@ -558,11 +559,12 @@ export function Support() {
                       className="btn btn--secondary"
                       style={{
                         padding: '8px 16px',
-                        background: '#202d42',
-                        borderColor: '#2d3f5c',
-                        color: '#cbd5e1',
+                        background: 'var(--bg-subtle)',
+                        borderColor: 'var(--border-default)',
+                        color: 'var(--text-main)',
                         borderRadius: 8,
                         fontSize: '0.8125rem',
+                        fontWeight: 600,
                         display: 'flex',
                         alignItems: 'center',
                         gap: 6,
@@ -584,23 +586,24 @@ export function Support() {
                             alignItems: 'center',
                             gap: 6,
                             padding: '4px 8px',
-                            background: '#19263a',
-                            border: '1px solid #283a54',
+                            background: 'var(--bg-subtle)',
+                            border: '1px solid var(--border-default)',
                             borderRadius: 6,
                             fontSize: '0.75rem',
-                            color: '#cbd5e1',
+                            color: 'var(--text-main)',
+                            fontWeight: 600,
                           }}
                         >
-                          <Paperclip size={12} color="#38bdf8" />
+                          <Paperclip size={12} color="var(--brand)" />
                           <span>{file.name}</span>
-                          <span style={{ color: '#64748b' }}>({file.size})</span>
+                          <span style={{ color: 'var(--text-tertiary)' }}>({file.size})</span>
                           <button
                             type="button"
                             onClick={() => removeAttachment(file.id)}
                             style={{
                               background: 'none',
                               border: 'none',
-                              color: '#94a3b8',
+                              color: 'var(--text-tertiary)',
                               cursor: 'pointer',
                               padding: 2,
                             }}
@@ -612,7 +615,7 @@ export function Support() {
                     </div>
                   )}
 
-                  <p style={{ margin: '6px 0 0', fontSize: '0.6875rem', color: '#64748b' }}>
+                  <p style={{ margin: '6px 0 0', fontSize: '0.6875rem', color: 'var(--text-tertiary)' }}>
                     {t('support.allowedFiles')}
                   </p>
                 </div>
@@ -624,11 +627,11 @@ export function Support() {
                     size="lg"
                     loading={createMutation.isPending}
                     style={{
-                      background: '#0284c7',
-                      borderColor: '#0284c7',
-                      color: '#ffffff',
+                      background: 'var(--brand)',
+                      borderColor: 'var(--brand)',
+                      color: 'var(--on-brand)',
                       padding: '10px 24px',
-                      fontWeight: 600,
+                      fontWeight: 700,
                     }}
                   >
                     {createMutation.isPending ? t('support.submitting') : t('support.openTicket')}
@@ -649,7 +652,7 @@ export function Support() {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
-                      borderBottom: '1px solid #1e2c40',
+                      borderBottom: '1px solid var(--border-subtle)',
                       paddingBottom: 14,
                     }}
                   >
@@ -657,7 +660,7 @@ export function Support() {
                       type="button"
                       onClick={() => setSelectedTicketId(null)}
                       className="btn btn--ghost"
-                      style={{ padding: '6px 10px', fontSize: '0.8125rem', color: '#38bdf8', gap: 6 }}
+                      style={{ padding: '6px 10px', fontSize: '0.8125rem', color: 'var(--brand)', gap: 6, fontWeight: 700 }}
                     >
                       <ArrowLeft size={14} />
                       {t('support.backToTickets')}
@@ -669,13 +672,13 @@ export function Support() {
                   </div>
 
                   <div>
-                    <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#f8fafc', margin: '0 0 6px' }}>
+                    <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)', margin: '0 0 6px' }}>
                       #{activeTicket.ticket_number} - {activeTicket.title}
                     </h2>
-                    <div style={{ display: 'flex', gap: 14, fontSize: '0.75rem', color: '#64748b' }}>
-                      <span>Service: <strong style={{ color: '#cbd5e1' }}>{activeTicket.product_slug.toUpperCase()}</strong></span>
-                      <span>Category: <strong style={{ color: '#cbd5e1' }}>{activeTicket.category}</strong></span>
-                      <span>Created: <strong style={{ color: '#cbd5e1' }}>{formatRelative(activeTicket.created_at)}</strong></span>
+                    <div style={{ display: 'flex', gap: 14, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      <span>Service: <strong style={{ color: 'var(--text-main)' }}>{activeTicket.product_slug.toUpperCase()}</strong></span>
+                      <span>Category: <strong style={{ color: 'var(--text-main)' }}>{activeTicket.category}</strong></span>
+                      <span>Created: <strong style={{ color: 'var(--text-main)' }}>{formatRelative(activeTicket.created_at)}</strong></span>
                     </div>
                   </div>
 
@@ -688,9 +691,9 @@ export function Support() {
                       maxHeight: 480,
                       overflowY: 'auto',
                       padding: '12px 14px',
-                      background: '#0d1420',
+                      background: 'var(--bg-subtle)',
                       borderRadius: 10,
-                      border: '1px solid #1a2738',
+                      border: '1px solid var(--border-subtle)',
                     }}
                   >
                     {activeTicket.messages && activeTicket.messages.length > 0 ? (
@@ -705,13 +708,13 @@ export function Support() {
                               gap: 6,
                               padding: '12px 14px',
                               borderRadius: 8,
-                              background: isEngineer ? '#152438' : '#192231',
-                              border: isEngineer ? '1px solid #203a5c' : '1px solid #233246',
+                              background: isEngineer ? 'var(--brand-subtle)' : 'var(--bg-surface)',
+                              border: isEngineer ? '1px solid var(--brand-border)' : '1px solid var(--border-default)',
                             }}
                           >
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                               <div className="row" style={{ gap: 8, alignItems: 'center' }}>
-                                <strong style={{ fontSize: '0.8125rem', color: isEngineer ? '#38bdf8' : '#f1f5f9' }}>
+                                <strong style={{ fontSize: '0.8125rem', color: isEngineer ? 'var(--brand)' : 'var(--text-main)' }}>
                                   {msg.sender_name || (isEngineer ? 'Support Engineer' : me?.display_name || 'Partner')}
                                 </strong>
                                 {isEngineer && (
@@ -719,28 +722,28 @@ export function Support() {
                                     style={{
                                       fontSize: '0.6875rem',
                                       padding: '1px 6px',
-                                      background: '#0284c7',
-                                      color: '#fff',
+                                      background: 'var(--brand)',
+                                      color: 'var(--on-brand)',
                                       borderRadius: 4,
-                                      fontWeight: 600,
+                                      fontWeight: 700,
                                     }}
                                   >
                                     STAFF
                                   </span>
                                 )}
                               </div>
-                              <span style={{ fontSize: '0.6875rem', color: '#64748b' }}>
+                              <span style={{ fontSize: '0.6875rem', color: 'var(--text-tertiary)' }}>
                                 {formatRelative(msg.created_at)}
                               </span>
                             </div>
-                            <div style={{ fontSize: '0.875rem', color: '#e2e8f0', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                            <div style={{ fontSize: '0.875rem', color: 'var(--text-main)', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
                               {msg.body}
                             </div>
                           </div>
                         );
                       })
                     ) : (
-                      <div style={{ fontSize: '0.875rem', color: '#e2e8f0', whiteSpace: 'pre-wrap' }}>
+                      <div style={{ fontSize: '0.875rem', color: 'var(--text-main)', whiteSpace: 'pre-wrap' }}>
                         {activeTicket.description}
                       </div>
                     )}
@@ -748,7 +751,7 @@ export function Support() {
 
                   {/* Reply Form */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    <label style={{ fontSize: '0.8125rem', color: '#94a3b8', fontWeight: 600 }}>
+                    <label style={{ fontSize: '0.8125rem', color: 'var(--text-main)', fontWeight: 700 }}>
                       {t('support.replyPlaceholder')}
                     </label>
                     <textarea
@@ -765,7 +768,7 @@ export function Support() {
                         loading={replyMutation.isPending}
                         disabled={!replyBody.trim()}
                         onClick={handleSendReply}
-                        style={{ background: '#0284c7', color: '#fff' }}
+                        style={{ background: 'var(--brand)', color: 'var(--on-brand)', fontWeight: 700 }}
                       >
                         <Send size={14} style={{ marginRight: 6 }} />
                         {t('support.sendReply')}
@@ -781,18 +784,18 @@ export function Support() {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
-                      borderBottom: '1px solid #1e2c40',
+                      borderBottom: '1px solid var(--border-subtle)',
                       paddingBottom: 16,
                     }}
                   >
-                    <h1 style={{ fontSize: '1.375rem', fontWeight: 700, color: '#f8fafc', margin: 0 }}>
+                    <h1 style={{ fontSize: '1.375rem', fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>
                       {t('support.mySupportTickets')} ({ticketCount})
                     </h1>
                     <button
                       type="button"
                       onClick={() => setNav('open')}
                       className="btn btn--primary"
-                      style={{ fontSize: '0.8125rem', padding: '6px 14px', background: '#0284c7' }}
+                      style={{ fontSize: '0.8125rem', padding: '6px 14px', background: 'var(--brand)', color: 'var(--on-brand)', fontWeight: 700 }}
                     >
                       <Plus size={14} style={{ marginRight: 4 }} />
                       {t('support.openTicket')}
@@ -810,32 +813,33 @@ export function Support() {
                             alignItems: 'center',
                             justifyContent: 'space-between',
                             padding: '14px 16px',
-                            background: '#152132',
-                            border: '1px solid #203148',
-                            borderRadius: 8,
+                            background: 'var(--bg-surface)',
+                            border: '1.5px solid var(--border-subtle)',
+                            borderRadius: 'var(--radius-md)',
+                            boxShadow: 'var(--shadow-xs)',
                             cursor: 'pointer',
                             transition: 'all 0.15s ease',
                           }}
                           onMouseEnter={(e) => {
-                            e.currentTarget.style.borderColor = '#38bdf8';
-                            e.currentTarget.style.background = '#18273c';
+                            e.currentTarget.style.borderColor = 'var(--brand)';
+                            e.currentTarget.style.background = 'var(--bg-hover)';
                           }}
                           onMouseLeave={(e) => {
-                            e.currentTarget.style.borderColor = '#203148';
-                            e.currentTarget.style.background = '#152132';
+                            e.currentTarget.style.borderColor = 'var(--border-subtle)';
+                            e.currentTarget.style.background = 'var(--bg-surface)';
                           }}
                         >
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                             <div className="row" style={{ gap: 8, alignItems: 'center' }}>
-                              <strong style={{ color: '#38bdf8', fontSize: '0.875rem' }}>
+                              <strong style={{ color: 'var(--brand)', fontSize: '0.875rem', fontWeight: 800 }}>
                                 #{tkt.ticket_number}
                               </strong>
-                              <span style={{ color: '#f1f5f9', fontWeight: 600, fontSize: '0.875rem' }}>
+                              <span style={{ color: 'var(--text-main)', fontWeight: 700, fontSize: '0.875rem' }}>
                                 {tkt.title}
                               </span>
                             </div>
-                            <div style={{ display: 'flex', gap: 12, fontSize: '0.75rem', color: '#94a3b8' }}>
-                              <span>Service: <strong style={{ color: '#cbd5e1' }}>{tkt.product_slug.toUpperCase()}</strong></span>
+                            <div style={{ display: 'flex', gap: 12, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                              <span>Service: <strong style={{ color: 'var(--text-main)' }}>{tkt.product_slug.toUpperCase()}</strong></span>
                               <span>Category: {tkt.category}</span>
                               <span>Created: {formatRelative(tkt.created_at)}</span>
                             </div>
@@ -844,15 +848,15 @@ export function Support() {
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                             {getStatusBadge(tkt.status)}
                             {getPriorityBadge(tkt.severity)}
-                            <ChevronRight size={16} color="#64748b" />
+                            <ChevronRight size={16} color="var(--text-tertiary)" />
                           </div>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div style={{ textAlign: 'center', padding: '48px 16px', color: '#64748b' }}>
-                      <LifeBuoy size={40} style={{ margin: '0 auto 12px', opacity: 0.4 }} />
-                      <p style={{ margin: '0 0 12px', fontWeight: 600, color: '#94a3b8' }}>
+                    <div style={{ textAlign: 'center', padding: '48px 16px', color: 'var(--text-muted)' }}>
+                      <LifeBuoy size={40} style={{ margin: '0 auto 12px', opacity: 0.6, color: 'var(--brand)' }} />
+                      <p style={{ margin: '0 0 12px', fontWeight: 700, color: 'var(--text-main)' }}>
                         {t('support.noTickets')}
                       </p>
                       <button
@@ -872,7 +876,7 @@ export function Support() {
           {/* TAB 3: KNOWLEDGEBASE */}
           {nav === 'knowledgebase' && (
             <div className="support-main-card">
-              <h1 style={{ fontSize: '1.375rem', fontWeight: 700, color: '#f8fafc', margin: 0 }}>
+              <h1 style={{ fontSize: '1.375rem', fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>
                 {t('support.knowledgebase')}
               </h1>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12 }}>
@@ -886,7 +890,7 @@ export function Support() {
                     a: 'Ensure USB or LAN printer drivers are installed. In PulsePOS settings under Hardware > Receipt Printer, select your 80mm or 58mm printer model and test print.',
                   },
                   {
-                    q: 'Healora: Patient Privacy & Masking Policies',
+                    q: 'Doctor Chamber: Doctor & Patient Privacy Policies',
                     a: 'Under healthcare regulations, all patient identifiable data is strictly masked from partner referral portals. Commissions are tracked via anonymized encounter UUIDs.',
                   },
                   {
@@ -898,15 +902,16 @@ export function Support() {
                     key={idx}
                     style={{
                       padding: 16,
-                      background: '#152132',
-                      border: '1px solid #203148',
-                      borderRadius: 8,
+                      background: 'var(--bg-surface)',
+                      border: '1.5px solid var(--border-subtle)',
+                      borderRadius: 'var(--radius-md)',
+                      boxShadow: 'var(--shadow-xs)',
                     }}
                   >
-                    <h3 style={{ fontSize: '0.9375rem', fontWeight: 600, color: '#38bdf8', margin: '0 0 6px' }}>
+                    <h3 style={{ fontSize: '0.9375rem', fontWeight: 750, color: 'var(--brand)', margin: '0 0 6px' }}>
                       {item.q}
                     </h3>
-                    <p style={{ fontSize: '0.8125rem', color: '#94a3b8', margin: 0, lineHeight: 1.5 }}>
+                    <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.5, fontWeight: 500 }}>
                       {item.a}
                     </p>
                   </div>
@@ -923,11 +928,11 @@ export function Support() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  borderBottom: '1px solid #1e2c40',
+                  borderBottom: '1px solid var(--border-subtle)',
                   paddingBottom: 14,
                 }}
               >
-                <h1 style={{ fontSize: '1.375rem', fontWeight: 700, color: '#f8fafc', margin: 0 }}>
+                <h1 style={{ fontSize: '1.375rem', fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>
                   {t('support.networkStatus')}
                 </h1>
                 <span
@@ -935,12 +940,12 @@ export function Support() {
                     display: 'flex',
                     alignItems: 'center',
                     gap: 6,
-                    color: '#34d399',
+                    color: 'var(--success)',
                     fontSize: '0.8125rem',
-                    fontWeight: 600,
+                    fontWeight: 700,
                   }}
                 >
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981' }} />
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--success)' }} />
                   All Systems Operational
                 </span>
               </div>
@@ -948,7 +953,7 @@ export function Support() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {[
                   { name: 'PulsePOS Core API & Sync Engine', uptime: '99.98%', status: 'Operational' },
-                  { name: 'Healora Telemedicine & Doctor Portal', uptime: '99.99%', status: 'Operational' },
+                  { name: 'Doctor Chamber Telemedicine & Doctor Portal', uptime: '99.99%', status: 'Operational' },
                   { name: 'Referral Attribution & Commission Service', uptime: '100%', status: 'Operational' },
                   { name: 'bKash / Nagad / Bank Payout Gateway', uptime: '99.95%', status: 'Operational' },
                   { name: 'Outbound Webhook Dispatcher', uptime: '100%', status: 'Operational' },
@@ -960,25 +965,27 @@ export function Support() {
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       padding: '12px 16px',
-                      background: '#152132',
-                      border: '1px solid #203148',
-                      borderRadius: 8,
+                      background: 'var(--bg-surface)',
+                      border: '1.5px solid var(--border-subtle)',
+                      borderRadius: 'var(--radius-md)',
+                      boxShadow: 'var(--shadow-xs)',
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981' }} />
-                      <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#f1f5f9' }}>
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--success)' }} />
+                      <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-main)' }}>
                         {srv.name}
                       </span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                      <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Uptime: {srv.uptime}</span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Uptime: {srv.uptime}</span>
                       <span
                         style={{
                           fontSize: '0.75rem',
-                          fontWeight: 600,
-                          color: '#34d399',
-                          background: 'rgba(16, 185, 129, 0.12)',
+                          fontWeight: 700,
+                          color: 'var(--success)',
+                          background: 'var(--success-subtle)',
+                          border: '1px solid var(--success-border)',
                           padding: '2px 8px',
                           borderRadius: 6,
                         }}
@@ -995,7 +1002,7 @@ export function Support() {
           {/* TAB 5: ANNOUNCEMENTS */}
           {nav === 'announcements' && (
             <div className="support-main-card">
-              <h1 style={{ fontSize: '1.375rem', fontWeight: 700, color: '#f8fafc', margin: 0 }}>
+              <h1 style={{ fontSize: '1.375rem', fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>
                 {t('support.announcements')}
               </h1>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -1020,16 +1027,17 @@ export function Support() {
                     key={idx}
                     style={{
                       padding: 16,
-                      background: '#152132',
-                      border: '1px solid #203148',
-                      borderRadius: 8,
+                      background: 'var(--bg-surface)',
+                      border: '1.5px solid var(--border-subtle)',
+                      borderRadius: 'var(--radius-md)',
+                      boxShadow: 'var(--shadow-xs)',
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                      <strong style={{ color: '#f1f5f9', fontSize: '0.9375rem' }}>{item.title}</strong>
-                      <span style={{ fontSize: '0.75rem', color: '#64748b' }}>{item.date}</span>
+                      <strong style={{ color: 'var(--text-main)', fontSize: '0.9375rem', fontWeight: 800 }}>{item.title}</strong>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', fontWeight: 600 }}>{item.date}</span>
                     </div>
-                    <p style={{ margin: 0, fontSize: '0.8125rem', color: '#94a3b8', lineHeight: 1.5 }}>
+                    <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: 1.5, fontWeight: 500 }}>
                       {item.body}
                     </p>
                   </div>
@@ -1041,7 +1049,7 @@ export function Support() {
           {/* TAB 6: DOWNLOADS */}
           {nav === 'downloads' && (
             <div className="support-main-card">
-              <h1 style={{ fontSize: '1.375rem', fontWeight: 700, color: '#f8fafc', margin: 0 }}>
+              <h1 style={{ fontSize: '1.375rem', fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>
                 {t('support.downloads')}
               </h1>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -1074,24 +1082,25 @@ export function Support() {
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       padding: '14px 16px',
-                      background: '#152132',
-                      border: '1px solid #203148',
-                      borderRadius: 8,
+                      background: 'var(--bg-surface)',
+                      border: '1.5px solid var(--border-subtle)',
+                      borderRadius: 'var(--radius-md)',
+                      boxShadow: 'var(--shadow-xs)',
                     }}
                   >
                     <div>
-                      <strong style={{ color: '#f1f5f9', fontSize: '0.875rem', display: 'block' }}>
+                      <strong style={{ color: 'var(--text-main)', fontSize: '0.875rem', display: 'block', fontWeight: 800 }}>
                         {dl.title}
                       </strong>
-                      <span style={{ color: '#94a3b8', fontSize: '0.75rem' }}>{dl.desc}</span>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 500 }}>{dl.desc}</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                      <span style={{ color: '#64748b', fontSize: '0.75rem' }}>{dl.size}</span>
+                      <span style={{ color: 'var(--text-tertiary)', fontSize: '0.75rem', fontWeight: 600 }}>{dl.size}</span>
                       <button
                         type="button"
                         onClick={() => toast(`Downloading ${dl.title}...`)}
                         className="btn btn--secondary"
-                        style={{ padding: '6px 12px', fontSize: '0.75rem', gap: 6 }}
+                        style={{ padding: '6px 12px', fontSize: '0.75rem', gap: 6, fontWeight: 700 }}
                       >
                         <Download size={13} />
                         Download

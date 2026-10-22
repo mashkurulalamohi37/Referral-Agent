@@ -70,17 +70,17 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  min-height: 40px;
+  min-height: 42px;
   padding: 0 var(--space-3);
   border-radius: var(--radius-md);
   color: var(--text-muted);
-  font-weight: 500;
+  font-weight: 600;
   font-size: var(--text-sm);
   text-decoration: none;
   transition: color var(--motion-fast) var(--ease-out), background-color var(--motion-fast) var(--ease-out);
 }
 .nav-link:hover { color: var(--text-main); background: var(--bg-hover); }
-.nav-link[aria-current='page'] { color: var(--brand); font-weight: 600; }
+.nav-link[aria-current='page'] { color: var(--brand); font-weight: 750; }
 .nav-link__indicator {
   position: absolute;
   inset: 0;
@@ -93,11 +93,11 @@
 .nav-sub-list {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   list-style: none;
   margin: 4px 0 6px 14px;
   padding: 0 0 0 10px;
-  border-left: 1.5px solid var(--border-subtle);
+  border-left: 2px solid var(--border-subtle);
 }
 
 .nav-sub-link {
@@ -105,13 +105,14 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  min-height: 32px;
+  min-height: 34px;
   padding: 0 10px;
   border-radius: var(--radius-sm);
   color: var(--text-muted);
   font-size: 0.8125rem;
-  font-weight: 500;
+  font-weight: 600;
   text-decoration: none;
+  border: 1px solid transparent;
   transition: all 0.15s ease;
 }
 
@@ -121,9 +122,10 @@
 }
 
 .nav-sub-link.active {
-  color: #38bdf8;
-  background: rgba(14, 165, 233, 0.12);
-  font-weight: 600;
+  color: var(--brand);
+  background: var(--brand-subtle);
+  border-color: var(--brand-border);
+  font-weight: 750;
 }
 
 .main-col {
@@ -228,8 +230,8 @@
 
 .page { display: flex; flex-direction: column; gap: var(--space-6); }
 .page-header { display: flex; justify-content: space-between; align-items: flex-end; gap: var(--space-4); flex-wrap: wrap; }
-.page-title { font-size: var(--text-xl); font-weight: 750; letter-spacing: -0.02em; }
-.page-subtitle { color: var(--text-muted); margin-top: var(--space-1); }
+.page-title { font-size: 1.625rem; font-weight: 850; letter-spacing: -0.025em; color: var(--text-main); }
+.page-subtitle { color: var(--text-muted); font-size: 0.9375rem; font-weight: 500; margin-top: var(--space-1); }
 
 .grid { display: grid; gap: var(--space-5); }
 .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -244,13 +246,13 @@
 .muted { color: var(--text-muted); }
 .small { font-size: var(--text-sm); }
 .xsmall { font-size: var(--text-xs); }
-.strong { font-weight: 650; }
+.strong { font-weight: 700; }
 
 /* ================================================================== card */
 
 .card {
   background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
+  border: 1.5px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card), var(--card-inner-highlight);
   transition: transform var(--motion-base) var(--ease-out), box-shadow var(--motion-base) var(--ease-out), border-color var(--motion-base) var(--ease-out);
@@ -1010,7 +1012,7 @@
 
 .support-main-card {
   background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
+  border: 1.5px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card), var(--card-inner-highlight);
   padding: 24px;
@@ -1023,10 +1025,11 @@
   width: 100%;
   padding: 10px 14px;
   background: var(--bg-surface);
-  border: 1px solid var(--border-default);
+  border: 1.5px solid var(--border-default);
   border-radius: var(--radius-md);
   color: var(--text-main);
   font-size: 0.875rem;
+  font-weight: 500;
   outline: none;
   transition: border-color var(--motion-fast) var(--ease-out), box-shadow var(--motion-fast) var(--ease-out);
 }
@@ -1040,10 +1043,11 @@
   width: 100%;
   padding: 10px 14px;
   background: var(--bg-surface);
-  border: 1px solid var(--border-default);
+  border: 1.5px solid var(--border-default);
   border-radius: var(--radius-md);
   color: var(--text-main);
   font-size: 0.875rem;
+  font-weight: 600;
   outline: none;
   cursor: pointer;
   transition: border-color var(--motion-fast) var(--ease-out), box-shadow var(--motion-fast) var(--ease-out);
